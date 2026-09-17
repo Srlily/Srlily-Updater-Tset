@@ -263,78 +263,114 @@ jobs:
       - name: Extract changelog section
         shell: pwsh
         run: |
-          $version = "${{ steps.ver.outputs.version }}"
-          $tag = "${{ steps.ver.outputs.tag }}"
-          $repo = "${{ github.repository }}"
-          $runId = "${{ github.run_id }}"
-          $nl = [Environment]::NewLine
-          $changelog = Get-Content CHANGELOG.md -Raw -Encoding utf8
-          $pattern = "(?s)^## \[$([regex]::Escape($version))\][^\r\n]*\r?\n(.*?)(?=\r?\n## \[|\z)"
-          $m = [regex]::Match($changelog, $pattern)
-          if ($m.Success) {
-            $section = $m.Groups[1].Value.Trim()
-          } else {
-            $section = @(
-              '### 软件介绍',
-              '',
-              'Srlily Updater Test 是用于测试 Srlily-Updater 更新链路的示例桌面应用。',
-              '',
-              '### 说明',
-              '',
-              "- 版本：$version",
-              '- 运行时：.NET 10 self-contained',
-              '- 架构：win-x64 / win-arm64 / win-x86'
-            ) -join $nl
+          $ErrorActionPreference = 'Stop'
+          $version = '${{ steps.ver.outputs.version }}'
+          $tag = '${{ steps.ver.outputs.tag }}'
+          $repo = '${{ github.repository }}'
+          $runId = '${{ github.run_id }}'
+
+          function Format-Size([long]$bytes) {
+            if ($bytes -ge 1MB) { return ('{0:N2} MB' -f ($bytes / 1MB)) }
+            if ($bytes -ge 1KB) { return ('{0:N2} KB' -f ($bytes / 1KB)) }
+            return ('{0} B' -f $bytes)
           }
 
-          foreach ($h in @('### 软件介绍', '### 新增', '### 修复', '### 优化')) {
-            if ($section -notmatch [regex]::Escape($h)) {
-              $section = $section + $nl + $nl + $h + $nl + $nl + '- （本版本无相关条目）'
+          $lines = [System.Collections.Generic.List[string]]::new()
+          $changelog = $null
+          if (Test-Path CHANGELOG.md) {
+            $changelog = Get-Content CHANGELOG.md -Raw -Encoding utf8
+          }
+          if ($changelog) {
+            $changelog = $changelog.TrimStart([char]0xFEFF)
+          }
+
+          $section = $null
+          if ($changelog) {
+            # (?m) so ^ matches each line, not only the file start
+            $pattern = '(?ms)^## \[' + [regex]::Escape($version) + '\][^\r\n]*\r?\n(.*?)(?=\r?\n## \[|\z)'
+            $m = [regex]::Match($changelog, $pattern)
+            if ($m.Success) {
+              $section = $m.Groups[1].Value.Trim()
+              Write-Host "Changelog section matched for $version ($($section.Length) chars)"
+            } else {
+              Write-Host "WARN: no changelog section for $version"
             }
           }
+
+          if ($section) {
+            foreach ($block in ($section -split "`r?`n`r?`n")) {
+              $lines.Add($block.Trim())
+              $lines.Add('')
+            }
+          } else {
+            $lines.Add("Srlily Updater Test $tag — .NET 10 self-contained 示例应用，用于测试 Srlily-Updater 更新链路。")
+            $lines.Add('')
+            $lines.Add('### 新增')
+            $lines.Add('')
+            $lines.Add('- （见 CHANGELOG 或 Actions 构建日志）')
+            $lines.Add('')
+            $lines.Add('### 修复')
+            $lines.Add('')
+            $lines.Add('- （见 CHANGELOG 或 Actions 构建日志）')
+            $lines.Add('')
+            $lines.Add('### 优化')
+            $lines.Add('')
+            $lines.Add('- （见 CHANGELOG 或 Actions 构建日志）')
+            $lines.Add('')
+          }
+
+          # Guarantee common release sections without wiping real content
+          foreach ($h in @('### 新增', '### 修复', '### 优化')) {
+            $has = $false
+            foreach ($ln in $lines) {
+              if ($ln.Trim() -eq $h) { $has = $true; break }
+            }
+            if (-not $has) {
+              $lines.Add($h)
+              $lines.Add('')
+              $lines.Add('- 本版本无相关条目')
+              $lines.Add('')
+            }
+          }
+
+          $lines.Add('## 下载说明')
+          $lines.Add('')
+          $lines.Add('| 文件 | 类型 | 大小 |')
+          $lines.Add('|------|------|------|')
 
           $files = Get-ChildItem release-assets -File | Sort-Object Name
-          $rows = @()
           foreach ($f in $files) {
-            $size = [math]::Round($f.Length / 1MB, 2)
             $kind = switch -Regex ($f.Name) {
-              '-setup\.exe$' { '安装向导 (Inno Setup)' }
-              '\.msi$'       { 'MSI 安装包 (WiX 5)' }
+              '-setup\.exe$'    { '安装向导（Inno Setup）' }
+              '\.msi$'          { 'MSI 安装包（WiX 5）' }
               '-portable\.zip$' { '便携包（更新器就地更新）' }
-              'checksums'    { '校验和清单' }
-              'update-manifest' { '更新清单' }
-              default        { '其他' }
+              'checksums'       { '校验和清单' }
+              'update-manifest' { '更新清单（供更新器读取）' }
+              default           { '其他' }
             }
-            $rows += "| ``$($f.Name)`` | $kind | $size MB |"
+            $lines.Add(('| `{0}` | {1} | {2} |' -f $f.Name, $kind, (Format-Size $f.Length)))
           }
 
-          $download = @(
-            '',
-            '## 下载说明',
-            '',
-            '| 文件 | 类型 | 大小 |',
-            '|------|------|------|'
-          ) -join $nl
-          $download = $download + $nl + ($rows -join $nl) + $nl + $nl
-          $download = $download + @(
-            '### 如何选择',
-            '',
-            '- **首次安装**：下载对应架构的 ``*-setup.exe`` 或 ``*.msi``',
-            '- **更新器就地更新 / 自动化测试**：使用对应架构的 ``*-portable.zip``',
-            '- **完整性校验**：对照 ``checksums.sha256`` 中的 SHA256',
-            '',
-            '### 版本信息',
-            '',
-            "- 版本标签：``$tag``",
-            '- 运行时：.NET 10 self-contained',
-            '- 支持架构：win-x64 / win-arm64 / win-x86',
-            "- 构建记录：https://github.com/$repo/actions/runs/$runId",
-            "- 项目仓库：https://github.com/$repo"
-          ) -join $nl
+          $lines.Add('')
+          $lines.Add('### 如何选择')
+          $lines.Add('')
+          $lines.Add('- **首次安装**：下载对应架构的 `*-setup.exe` 或 `*.msi`')
+          $lines.Add('- **更新器就地更新 / 自动化测试**：使用对应架构的 `*-portable.zip`')
+          $lines.Add('- **完整性校验**：对照 `checksums.sha256` 中的 SHA256')
+          $lines.Add('- **更新器元数据**：`update-manifest.json` 记录版本与架构资产名，便于更新器免解压读取')
+          $lines.Add('')
+          $lines.Add('### 版本信息')
+          $lines.Add('')
+          $lines.Add(('- 版本标签：`{0}`' -f $tag))
+          $lines.Add('- 运行时：.NET 10 self-contained')
+          $lines.Add('- 支持架构：win-x64 / win-arm64 / win-x86')
+          $lines.Add(('- 构建记录：https://github.com/{0}/actions/runs/{1}' -f $repo, $runId))
+          $lines.Add(('- 项目仓库：https://github.com/{0}' -f $repo))
 
-          $body = $section + $nl + $download
-          $body | Set-Content release-notes.md -Encoding utf8
-          Write-Host "Release notes ready ($($body.Length) chars)"
+          $body = ($lines -join "`n").Trim() + "`n"
+          [System.IO.File]::WriteAllText((Join-Path $PWD 'release-notes.md'), $body, [System.Text.UTF8Encoding]::new($false))
+          Write-Host "Release notes ready ($($body.Length) chars, $($lines.Count) lines)"
+          Get-Content release-notes.md -TotalCount 50
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
