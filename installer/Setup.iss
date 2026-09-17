@@ -79,14 +79,15 @@ AllowNoIcons=yes
 LicenseFile=..\LICENSE
 ChangesAssociations=no
 
-[[Languages]
+[Languages]
 ; Chinese first so it is pre-selected on zh-CN systems; file must be UTF-8 with BOM.
-Name: "chinesesimplified"; MessagesFile: "Languages\ChineseSimplified.isl"
+; Use a unique Name (not the built-in id) when shipping a custom MessagesFile.
+Name: "simplifiedchinese"; MessagesFile: "Languages\ChineseSimplified.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [CustomMessages]
-chinesesimplified.OpenInstallFolder=打开安装目录
-english.OpenInstallFolder=Open install folder
+; Default (English) custom strings; language files may override via their own [CustomMessages].
+OpenInstallFolder=Open install folder
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked

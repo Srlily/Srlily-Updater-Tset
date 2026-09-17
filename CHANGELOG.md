@@ -10,6 +10,23 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/1.1.0/)。
 
+## [1.0.8] - 2026-02-14
+
+### 新增
+
+- （无）
+
+### 修复
+
+- 修复 setup.exe 编译失败：`Unknown language name "chinesesimplified"`
+  - 原因：在 `[CustomMessages]` 使用内置语言 id 作前缀，与自定义 `MessagesFile` 冲突
+  - 原因：`[Languages]` 误写为 `[[Languages]`
+- 语言 Name 改为唯一的 `simplifiedchinese`，中文文案移入语言文件的 `[CustomMessages]`
+
+### 优化
+
+- 无前缀 `[CustomMessages]` 作为英文默认；各语言文件可覆盖
+
 ## [1.0.7] - 2026-02-14
 
 ### 新增

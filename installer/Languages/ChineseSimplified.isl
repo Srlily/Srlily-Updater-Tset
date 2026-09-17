@@ -189,3 +189,4 @@ AssocingFileExtension=正在将 %2 文件扩展名与 %1 关联...
 AutoStartProgramGroupDescription=启动(&S)：
 AutoStartProgram=自动启动 %1
 AddonHostProgramNotFound=%1 无法在您选择的目录中找到。%n%n您仍要继续吗？
+OpenInstallFolder=打开安装目录

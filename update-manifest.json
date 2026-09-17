@@ -4,7 +4,7 @@
   "name": "Srlily Updater Test",
   "description": "用于测试 Srlily-Updater 更新流程的示例桌面应用",
   "channel": "stable",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "minOs": "windows-10",
   "runtime": "net10.0-windows",
   "homepage": "https://github.com/Srlily/Srlily-Updater-Tset",
