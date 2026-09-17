@@ -17,12 +17,16 @@ permissions:
 env:
   DOTNET_VERSION: "10.0.x"
   PROJECT: src/Srlily.UpdaterTset/Srlily.UpdaterTset.csproj
-  RID: win-x64
+  APP_NAME: Srlily.UpdaterTset
 
 jobs:
-  release:
-    name: Build & Publish Release
+  build:
+    name: Build ${{ matrix.rid }}
     runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        rid: [win-x64, win-arm64, win-x86]
 
     steps:
       - name: Checkout
@@ -37,17 +41,17 @@ jobs:
           $tag = "${{ github.event.inputs.tag }}"
           if (-not $tag) { $tag = "${{ github.ref_name }}" }
           if ($tag -notmatch '^v') {
-            Write-Host "Not a version tag; publish skipped."
             "version=" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
             "tag=" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
             "publish=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+            Write-Host "Not a version tag; publish skipped."
             exit 0
           }
           $version = $tag.TrimStart('v')
           "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "tag=$tag" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "publish=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-          Write-Host "Version=$version Tag=$tag"
+          Write-Host "Version=$version Tag=$tag RID=${{ matrix.rid }}"
 
       - name: Setup .NET
         if: steps.ver.outputs.publish == 'true'
@@ -71,25 +75,192 @@ jobs:
           $manifestPath = "update-manifest.json"
           $manifest = Get-Content $manifestPath -Raw | ConvertFrom-Json
           $manifest.version = $version
+          $manifest.releases.downloadPattern = "Srlily.UpdaterTset-v{version}-${{ matrix.rid }}-portable.zip"
+          $manifest.releases.assetName = "Srlily.UpdaterTset-v{version}-${{ matrix.rid }}-portable.zip"
           $manifest | ConvertTo-Json -Depth 20 | Set-Content $manifestPath -Encoding utf8
 
-          Write-Host "Synced version $version"
+          Write-Host "Synced version $version for ${{ matrix.rid }}"
 
       - name: Publish self-contained
         if: steps.ver.outputs.publish == 'true'
         run: >
           dotnet publish ${{ env.PROJECT }}
           -c Release
-          -r ${{ env.RID }}
+          -r ${{ matrix.rid }}
           --self-contained true
           -p:PublishSingleFile=false
-          -p:IncludeNativeLibrariesForSelfExtract=true
-          -p:EnableCompressionInSingleFile=true
-          -o publish/${{ env.RID }}
+          -p:PublishReadyToRun=true
+          -p:Version=${{ steps.ver.outputs.version }}
+          -o publish/${{ matrix.rid }}
+
+      - name: Ensure Inno Setup
+        if: steps.ver.outputs.publish == 'true'
+        shell: pwsh
+        run: |
+          $iscc = @(
+            "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+            "$env:ProgramFiles\Inno Setup 6\ISCC.exe"
+          ) | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
+          if (-not $iscc) {
+            Write-Host "Installing Inno Setup via winget/choco..."
+            choco install innosetup -y --no-progress
+            $iscc = @(
+              "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+              "$env:ProgramFiles\Inno Setup 6\ISCC.exe"
+            ) | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
+          }
+          if (-not $iscc) { throw "ISCC.exe not found after install" }
+          Write-Host "ISCC=$iscc"
+          "iscc=$iscc" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+        id: iscc
+
+      - name: Build setup.exe (Inno Setup)
+        if: steps.ver.outputs.publish == 'true'
+        shell: pwsh
+        run: |
+          $version = "${{ steps.ver.outputs.version }}"
+          $rid = "${{ matrix.rid }}"
+          $iscc = "${{ steps.iscc.outputs.iscc }}"
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+
+          & $iscc "installer\Setup.iss" `
+            "/DAppVersion=$version" `
+            "/DAppArch=$rid" `
+            "/DPublishDir=..\publish\$rid" `
+            "/O$((Resolve-Path artifacts).Path)" `
+            "/F=Srlily.UpdaterTset-v$version-$rid-setup"
+          if ($LASTEXITCODE -ne 0) { throw "iscc failed" }
+          Write-Host "setup.exe created"
+
+      - name: Install WiX 5 & build MSI
+        if: steps.ver.outputs.publish == 'true'
+        shell: pwsh
+        run: |
+          $version = "${{ steps.ver.outputs.version }}"
+          $rid = "${{ matrix.rid }}"
+          $arch = switch ($rid) {
+            "win-x64"   { "x64" }
+            "win-arm64" { "arm64" }
+            "win-x86"   { "x86" }
+            default     { "x64" }
+          }
+
+          # Pin WiX 5 — v7 requires OSMF EULA acceptance
+          dotnet tool install --global wix --version 5.0.2
+          if ($LASTEXITCODE -ne 0) { throw "wix tool install failed" }
+
+          $pub = (Resolve-Path "publish\$rid").Path
+          $ast = (Resolve-Path "src\Srlily.UpdaterTset\Assets").Path
+
+          wix build "installer\Package.wxs" `
+            -d "PublishDir=$pub" `
+            -d "AssetsDir=$ast" `
+            -d ProductVersion=$version `
+            -arch $arch `
+            -o "artifacts\Srlily.UpdaterTset-v$version-$rid.msi"
+          if ($LASTEXITCODE -ne 0) { throw "wix build failed" }
+          Write-Host "msi created"
+
+      - name: Package portable zip + checksums
+        if: steps.ver.outputs.publish == 'true'
+        shell: pwsh
+        run: |
+          $version = "${{ steps.ver.outputs.version }}"
+          $rid = "${{ matrix.rid }}"
+          $base = "Srlily.UpdaterTset-v$version-$rid"
+
+          $zip = "artifacts/$base-portable.zip"
+          if (Test-Path $zip) { Remove-Item $zip -Force }
+          Compress-Archive -Path "publish/$rid/*" -DestinationPath $zip
+
+          $lines = @()
+          foreach ($f in Get-ChildItem artifacts/* -File | Where-Object { $_.Name -match "($rid|update-manifest)" }) {
+            $h = (Get-FileHash $f.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            $lines += "$h  $($f.Name)"
+            Write-Host "SHA256 $($f.Name) = $h"
+          }
+          $lines | Set-Content "artifacts/checksums-$rid.sha256" -Encoding ascii
+
+          Copy-Item update-manifest.json "artifacts/update-manifest-$rid.json"
+
+      - name: Upload arch artifacts
+        if: steps.ver.outputs.publish == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pkg-${{ matrix.rid }}
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: Create GitHub Release
+    needs: build
+    runs-on: windows-latest
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && github.event.inputs.tag != '')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve version
+        id: ver
+        shell: pwsh
+        run: |
+          $tag = "${{ github.event.inputs.tag }}"
+          if (-not $tag) { $tag = "${{ github.ref_name }}" }
+          $version = $tag.TrimStart('v')
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "tag=$tag" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          Write-Host "Publish $tag / $version"
+
+      - name: Download all arch artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: collected
+          pattern: pkg-*
+          merge-multiple: true
+
+      - name: Assemble release assets + checksums
+        shell: pwsh
+        run: |
+          $version = "${{ steps.ver.outputs.version }}"
+          New-Item -ItemType Directory -Force -Path release-assets | Out-Null
+
+          # Copy installers, portable zips, msi, one merged checksum file
+          Get-ChildItem collected -Recurse -File | ForEach-Object {
+            if ($_.Name -match "setup\.exe$|\.msi$|-portable\.zip$") {
+              Copy-Item $_.FullName release-assets/
+            }
+          }
+
+          # Prefer x64 manifest as the default update-manifest
+          $manifest = Join-Path collected "update-manifest-win-x64.json"
+          if (-not (Test-Path $manifest)) {
+            $manifest = Get-ChildItem collected -Filter "update-manifest-*.json" | Select-Object -First 1 -ExpandProperty FullName
+          }
+          if ($manifest) { Copy-Item $manifest release-assets/update-manifest.json }
+
+          # Merge checksums
+          $lines = @()
+          foreach ($f in Get-ChildItem release-assets -File | Where-Object { $_.Name -ne "update-manifest.json" }) {
+            $h = (Get-FileHash $f.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            $lines += "$h  $($f.Name)"
+          }
+          if (Test-Path (Join-Path collected "update-manifest.json")) {
+            # no-op
+          }
+          if ($manifest) {
+            $h = (Get-FileHash (Join-Path release-assets "update-manifest.json") -Algorithm SHA256).Hash.ToLowerInvariant()
+            $lines += "$h  update-manifest.json"
+          }
+          $lines | Set-Content release-assets/checksums.sha256 -Encoding ascii
+
+          Write-Host "Release assets:"
+          Get-ChildItem release-assets | Format-Table Name, Length
 
       - name: Extract changelog section
-        id: notes
-        if: steps.ver.outputs.publish == 'true'
         shell: pwsh
         run: |
           $version = "${{ steps.ver.outputs.version }}"
@@ -106,34 +277,22 @@ jobs:
           用于测试 Srlily-Updater 更新功能的示例桌面应用。
 
           - 版本：$version
-          - 运行时：.NET 10 (win-x64, self-contained)
+          - 运行时：.NET 10 self-contained
+          - 架构：win-x64 / win-arm64 / win-x86
+          - 产物：setup.exe（Inno Setup）、.msi（WiX）、portable.zip
           - 构建：https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
           "@
           }
+
+          $assets = Get-ChildItem release-assets -File | Sort-Object Name | ForEach-Object {
+            $size = [math]::Round($_.Length / 1MB, 2)
+            "- ``$($_.Name)`` ($size MB)"
+          }
+          $body = $body + "`n`n## 下载说明`n`n" + ($assets -join "`n")
           $body | Set-Content release-notes.md -Encoding utf8
-          Write-Host "Release notes written ($($body.Length) chars)"
-
-      - name: Package zip + checksum
-        if: steps.ver.outputs.publish == 'true'
-        shell: pwsh
-        run: |
-          $version = "${{ steps.ver.outputs.version }}"
-          $name = "Srlily.UpdaterTset-v$version-${{ env.RID }}"
-          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
-
-          $zip = "artifacts/$name.zip"
-          if (Test-Path $zip) { Remove-Item $zip -Force }
-          Compress-Archive -Path "publish/${{ env.RID }}/*" -DestinationPath $zip
-
-          $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
-          "$hash  $name.zip" | Set-Content "artifacts/checksums.sha256" -Encoding ascii
-
-          Copy-Item update-manifest.json artifacts/
-          Write-Host "Packaged $zip"
-          Write-Host "SHA256 $hash"
+          Write-Host "Release notes ready"
 
       - name: Create GitHub Release
-        if: steps.ver.outputs.publish == 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.ver.outputs.tag }}
@@ -141,13 +300,6 @@ jobs:
           body_path: release-notes.md
           draft: false
           prerelease: ${{ contains(steps.ver.outputs.version, '-') }}
-          files: |
-            artifacts/Srlily.UpdaterTset-v${{ steps.ver.outputs.version }}-${{ env.RID }}.zip
-            artifacts/checksums.sha256
-            artifacts/update-manifest.json
+          files: release-assets/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Skip notice
-        if: steps.ver.outputs.publish != 'true'
-        run: echo "No v* tag; release publish skipped."

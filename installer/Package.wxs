@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  WiX 5 package — Srlily Updater Test MSI
+
+  After `dotnet publish -r <rid> -o publish/<rid>` (from repo root):
+    wix build installer/Package.wxs ^
+      -d PublishDir=<absolute path to publish/<rid>> ^
+      -d AssetsDir=<absolute path to src/Srlily.UpdaterTset/Assets> ^
+      -d ProductVersion=1.0.1 ^
+      -arch x64 ^
+      -o artifacts/Srlily.UpdaterTset-v1.0.1-win-x64.msi
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package
+    Name="Srlily Updater Test"
+    Manufacturer="Srlily"
+    Version="$(ProductVersion)"
+    UpgradeCode="3C9A7E15-8B2D-4F6A-9E0C-1D5B8A4F7E2C"
+    Scope="perMachine"
+    Language="2052">
+
+    <SummaryInformation
+      Description="Sample desktop app used to test the Srlily-Updater flow"
+      Manufacturer="Srlily" />
+
+    <MajorUpgrade
+      DowngradeErrorMessage="A newer version of Srlily Updater Test is already installed."
+      AllowSameVersionUpgrades="yes"
+      Schedule="afterInstallInitialize" />
+
+    <MediaTemplate EmbedCab="yes" />
+
+    <Icon Id="AppIcon" SourceFile="$(AssetsDir)\app.ico" />
+    <Property Id="ARPPRODUCTICON" Value="AppIcon" />
+    <Property Id="ARPHELPLINK" Value="https://github.com/Srlily/Srlily-Updater-Tset" />
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/Srlily/Srlily-Updater-Tset" />
+    <Property Id="ARPCOMMENTS" Value="Srlily Updater Test $(ProductVersion)" />
+
+    <StandardDirectory Id="ProgramFiles6432Folder">
+      <Directory Id="INSTALLFOLDER" Name="Srlily.UpdaterTset" />
+    </StandardDirectory>
+
+    <ComponentGroup Id="AppPayload" Directory="INSTALLFOLDER">
+      <Files Include="$(PublishDir)\**\*" />
+    </ComponentGroup>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="ApplicationProgramsFolder" Name="Srlily Updater Test">
+        <Component Id="ApplicationShortcut" Guid="9D4F2A81-C6E3-4B7A-8F05-2E1C9A6D3B47">
+          <Shortcut
+            Id="StartMenuShortcut"
+            Name="Srlily Updater Test"
+            Description="Srlily Updater Test"
+            Target="[INSTALLFOLDER]Srlily.UpdaterTset.exe"
+            WorkingDirectory="INSTALLFOLDER"
+            Icon="AppIcon" />
+          <RemoveFolder Id="RemoveApplicationProgramsFolder" On="uninstall" />
+          <RegistryValue
+            Root="HKLM"
+            Key="Software\Srlily\Srlily.UpdaterTset"
+            Name="Installed"
+            Type="integer"
+            Value="1"
+            KeyPath="yes" />
+        </Component>
+      </Directory>
+    </StandardDirectory>
+
+    <Feature Id="Main" Title="Srlily Updater Test" Level="1">
+      <ComponentGroupRef Id="AppPayload" />
+      <ComponentRef Id="ApplicationShortcut" />
+    </Feature>
+  </Package>
+</Wix>

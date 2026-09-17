@@ -95,6 +95,16 @@ public sealed class ReleaseInfo
     public string Api { get; init; } = "";
     public string DownloadPattern { get; init; } = "";
     public string AssetName { get; init; } = "";
+    public string DefaultRid { get; init; } = "win-x64";
+    public Dictionary<string, ArchitectureAssets>? Architectures { get; init; }
+}
+
+public sealed class ArchitectureAssets
+{
+    public string Rid { get; init; } = "";
+    public string Portable { get; init; } = "";
+    public string Setup { get; init; } = "";
+    public string Msi { get; init; } = "";
 }
 
 public sealed class EntryInfo

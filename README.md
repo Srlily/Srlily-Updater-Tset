@@ -51,32 +51,57 @@ dotnet run --project src/Srlily.UpdaterTset -c Release
 .\src\Srlily.UpdaterTset\bin\Release\net10.0-windows\Srlily.UpdaterTset.exe --files
 ```
 
+## 分发产物（多架构）
+
+每个版本同时提供三种形态，覆盖常见桌面软件分发方式：
+
+| 产物 | 命名 | 用途 |
+|------|------|------|
+| **setup.exe** | `Srlily.UpdaterTset-v{ver}-{rid}-setup.exe` | Inno Setup 安装向导，首次安装 |
+| **MSI** | `Srlily.UpdaterTset-v{ver}-{rid}.msi` | WiX 5 企业/静默安装 |
+| **portable.zip** | `Srlily.UpdaterTset-v{ver}-{rid}-portable.zip` | 便携包，**更新器就地替换用** |
+
+支持架构：
+
+| RID | 架构 |
+|-----|------|
+| `win-x64` | Windows x64 |
+| `win-arm64` | Windows ARM64 |
+| `win-x86` | Windows x86 |
+
+另有 `checksums.sha256` 与 `update-manifest.json`。
+
+> 更新器做增量/就地更新时请下载 **portable.zip**；setup.exe / MSI 面向首次安装。
+
 ## 本地打包
 
 ```powershell
-pwsh ./tools/package.ps1 -Version 1.0.0
+# 仅 portable.zip
+pwsh ./tools/package.ps1 -Version 1.0.1
+
+# 多架构 + 安装包（需本机已装 Inno Setup 6；WiX 会自动安装）
+pwsh ./tools/package.ps1 -Version 1.0.1 -Runtimes win-x64,win-arm64,win-x86 -IncludeInstallers
 ```
 
-产物位于 `artifacts/Srlily.UpdaterTset-v{version}-win-x64.zip`，并生成 `checksums.sha256`。
+产物位于 `artifacts/`，并生成 `checksums.sha256`。
 
 ## 发布流程（自动构建）
 
 1. 更新 `Directory.Build.props` 中的 `Version`
 2. 更新 `update-manifest.json` 中的 `version`
-3. 在 `CHANGELOG.md` 写入该版本说明
+3. 在 `CHANGELOG.md` 写入该版本说明（含「软件介绍」）
 4. 提交并打标签推送：
 
 ```powershell
-git tag -a v1.0.1 -m "Srlily Updater Test v1.0.1"
+git tag -a v1.0.2 -m "Srlily Updater Test v1.0.2"
 git push origin main --tags
 ```
 
 GitHub Actions 会：
 
-- 使用 .NET 10 发布 `win-x64` 自包含包
-- 打包 zip 并生成 SHA256
-- 创建 GitHub Release，**正文自动取自 CHANGELOG 对应章节**
-- 上传安装包与校验文件
+1. 对 `win-x64` / `win-arm64` / `win-x86` 分别 `dotnet publish`（自包含）
+2. 为每个架构生成 **setup.exe（Inno Setup）**、**MSI（WiX）**、**portable.zip**
+3. 汇总校验和，创建 GitHub Release（**正文自动取自 CHANGELOG 对应章节**）
 
 ## 作为 Srlily-Updater 测试目标
 
@@ -84,7 +109,7 @@ GitHub Actions 会：
 
 | 来源 | 用途 |
 |------|------|
-| `update-manifest.json` | 应用 ID、版本、发布 API、包名模板、路径约定 |
+| `update-manifest.json` | 应用 ID、版本、架构资产表、发布 API、路径约定 |
 | `Srlily.UpdaterTset.exe --version` | 校验本地当前版本 |
 | GitHub Releases API | 获取最新版本与资产下载地址 |
 | `checksums.sha256` | 校验包完整性 |

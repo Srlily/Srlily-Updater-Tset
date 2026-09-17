@@ -14,7 +14,9 @@
 | `channel` | `stable` / `beta` / `nightly` |
 | `version` | 当前包版本（SemVer） |
 | `releases.api` | GitHub Releases API |
-| `releases.downloadPattern` | 资产名模板，`{version}` 可被替换 |
+| `releases.downloadPattern` | 便携包名模板，`{version}` `{rid}` 可被替换 |
+| `releases.defaultRid` | 默认架构 RID（通常 `win-x64`） |
+| `releases.architectures` | 按架构列出 portable / setup / msi 资产名 |
 | `entry.executable` | 主程序文件名 |
 | `checksum.algorithm` | 包校验算法（SHA256） |
 | `paths.*` | 配置/语言/数据/插件/备份/暂存目录 |
@@ -58,13 +60,17 @@ GET {releases.api}
 
 ## 5. 发布资产命名
 
-Release 应包含：
+每个版本、每个架构（`win-x64` / `win-arm64` / `win-x86`）均提供：
 
 | 资产 | 说明 |
 |------|------|
-| `Srlily.UpdaterTset-v{version}-win-x64.zip` | 安装包 |
-| `checksums.sha256` | 包哈希清单 |
+| `Srlily.UpdaterTset-v{version}-{rid}-portable.zip` | **便携包，就地更新用** |
+| `Srlily.UpdaterTset-v{version}-{rid}-setup.exe` | Inno Setup 安装程序 |
+| `Srlily.UpdaterTset-v{version}-{rid}.msi` | WiX MSI 安装包 |
+| `checksums.sha256` | 全部资产哈希清单 |
 | `update-manifest.json` | 与包同版本的清单副本 |
+
+更新器应根据本机架构选择对应 `rid` 的 **portable.zip**；setup.exe / MSI 供用户首次安装。
 
 Release **正文**来自 `CHANGELOG.md` 对应 `## [version]` 章节（即软件介绍）。
 

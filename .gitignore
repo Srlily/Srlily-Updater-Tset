@@ -35,7 +35,9 @@ x86/
 [Aa][Rr][Mm]/
 [Aa][Rr][Mm]64/
 publish/
+artifacts/
 *.pdb
+*.wixpdb
 *.cache
 *.log
 

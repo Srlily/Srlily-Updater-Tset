@@ -4,6 +4,26 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [1.0.1] - 2026-02-14
+
+### 软件介绍
+
+Srlily Updater Test v1.0.1 对齐真实桌面软件分发形态：提供 **setup.exe（Inno Setup）**、**MSI（WiX 5）** 与 **portable.zip** 三类产物，并同时支持 **win-x64 / win-arm64 / win-x86** 三种架构。portable.zip 供更新器就地替换；setup.exe / MSI 用于首次安装。
+
+### 新增
+
+- 多架构发布矩阵：`win-x64`、`win-arm64`、`win-x86`
+- Inno Setup 安装包 `Srlily.UpdaterTset-v{ver}-{rid}-setup.exe`（含开始菜单、可选桌面图标、中英文向导）
+- WiX 5 MSI 安装包 `Srlily.UpdaterTset-v{ver}-{rid}.msi`（per-machine、MajorUpgrade）
+- 便携包统一命名为 `*-portable.zip`，便于与安装包区分
+- `update-manifest.json` 增加 `releases.architectures` 与 `defaultRid`
+- `tools/package.ps1` 支持多 RID 与 `-IncludeInstallers`
+
+### 说明
+
+- 更新器就地更新请使用 **portable.zip**
+- 首次安装用户可选用 setup.exe 或 MSI
+
 ## [1.0.0] - 2026-02-14
 
 ### 软件介绍
