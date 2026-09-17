@@ -11,6 +11,26 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/1.1.0/)。
 
+## [1.0.4] - 2026-02-14
+
+### 软件介绍
+
+Srlily Updater Test v1.0.4 修复 Release 工作流在 v1.0.3 上未能创建 GitHub Release 的问题（YAML 中 PowerShell here-string 破坏缩进导致工作流立即失败）。本版本恢复三架构 setup.exe / MSI / portable.zip 自动发布，并继续输出详细的新增 / 修复 / 优化说明。
+
+### 新增
+
+- （无新功能，恢复发布流水线）
+
+### 修复
+
+- 重写 Release 正文生成逻辑，去掉会破坏 YAML 缩进的 PowerShell here-string
+- v1.0.3 标签存在但无 Release 的根因：工作流文件解析失败，0 个 Job 启动
+
+### 优化
+
+- 发布说明生成改用字符串数组拼接，避免 YAML 字面块与脚本缩进冲突
+- setup.exe 文件名继续使用正确的 `/F` 参数（无前导 `=`）
+
 ## [1.0.3] - 2026-02-14
 
 ### 软件介绍
