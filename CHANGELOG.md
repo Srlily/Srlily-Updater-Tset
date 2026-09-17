@@ -144,10 +144,6 @@
 - `update-manifest.json` 增加 `releases.architectures` 与 `defaultRid`
 - `tools/package.ps1` 支持多 RID 与 `-IncludeInstallers`
 
-### 修复
-
-- （无）
-
 ### 优化
 
 - 更新器就地更新使用 portable.zip；首次安装可选 setup.exe 或 MSI
@@ -166,10 +162,6 @@
 - 配置、数据、模板、Schema、插件等多类型内容文件
 - GitHub Actions：标签触发构建与 Release
 - 本地打包脚本 `tools/package.ps1`
-
-### 修复
-
-- （无）
 
 ### 优化
 
