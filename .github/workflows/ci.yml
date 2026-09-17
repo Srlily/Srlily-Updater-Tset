@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: "10.0.x"
+  PROJECT: src/Srlily.UpdaterTset/Srlily.UpdaterTset.csproj
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore
+        run: dotnet restore ${{ env.PROJECT }}
+
+      - name: Build
+        run: dotnet build ${{ env.PROJECT }} -c Release --no-restore
+
+      - name: Smoke CLI
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem -Recurse -Filter Srlily.UpdaterTset.exe |
+            Select-Object -First 1 -ExpandProperty FullName
+          if (-not $exe) { throw "Executable not found" }
+          Write-Host "EXE=$exe"
+          & $exe --version
+          & $exe --info
+          & $exe --files
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.os }}
+          path: src/Srlily.UpdaterTset/bin/Release/net10.0-windows/
+          if-no-files-found: error
+          retention-days: 7

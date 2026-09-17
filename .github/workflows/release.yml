@@ -1,0 +1,153 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to build (e.g. v1.0.0). Leave empty to skip publish."
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+env:
+  DOTNET_VERSION: "10.0.x"
+  PROJECT: src/Srlily.UpdaterTset/Srlily.UpdaterTset.csproj
+  RID: win-x64
+
+jobs:
+  release:
+    name: Build & Publish Release
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve version
+        id: ver
+        shell: pwsh
+        run: |
+          $tag = "${{ github.event.inputs.tag }}"
+          if (-not $tag) { $tag = "${{ github.ref_name }}" }
+          if ($tag -notmatch '^v') {
+            Write-Host "Not a version tag; publish skipped."
+            "version=" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+            "tag=" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+            "publish=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+            exit 0
+          }
+          $version = $tag.TrimStart('v')
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "tag=$tag" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "publish=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          Write-Host "Version=$version Tag=$tag"
+
+      - name: Setup .NET
+        if: steps.ver.outputs.publish == 'true'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Sync version into project
+        if: steps.ver.outputs.publish == 'true'
+        shell: pwsh
+        run: |
+          $version = "${{ steps.ver.outputs.version }}"
+          $props = "Directory.Build.props"
+          (Get-Content $props -Raw) `
+            -replace '<Version>.*?</Version>', "<Version>$version</Version>" `
+            -replace '<AssemblyVersion>.*?</AssemblyVersion>', "<AssemblyVersion>$version.0</AssemblyVersion>" `
+            -replace '<FileVersion>.*?</FileVersion>', "<FileVersion>$version.0</FileVersion>" `
+            -replace '<InformationalVersion>.*?</InformationalVersion>', "<InformationalVersion>$version</InformationalVersion>" |
+            Set-Content $props -NoNewline
+
+          $manifestPath = "update-manifest.json"
+          $manifest = Get-Content $manifestPath -Raw | ConvertFrom-Json
+          $manifest.version = $version
+          $manifest | ConvertTo-Json -Depth 20 | Set-Content $manifestPath -Encoding utf8
+
+          Write-Host "Synced version $version"
+
+      - name: Publish self-contained
+        if: steps.ver.outputs.publish == 'true'
+        run: >
+          dotnet publish ${{ env.PROJECT }}
+          -c Release
+          -r ${{ env.RID }}
+          --self-contained true
+          -p:PublishSingleFile=false
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:EnableCompressionInSingleFile=true
+          -o publish/${{ env.RID }}
+
+      - name: Extract changelog section
+        id: notes
+        if: steps.ver.outputs.publish == 'true'
+        shell: pwsh
+        run: |
+          $version = "${{ steps.ver.outputs.version }}"
+          $tag = "${{ steps.ver.outputs.tag }}"
+          $changelog = Get-Content CHANGELOG.md -Raw -Encoding utf8
+          $pattern = "(?s)^## \[$([regex]::Escape($version))\][^\r\n]*\r?\n(.*?)(?=\r?\n## \[|\z)"
+          $m = [regex]::Match($changelog, $pattern)
+          if ($m.Success) {
+            $body = $m.Groups[1].Value.Trim()
+          } else {
+            $body = @"
+          ## Srlily Updater Test $tag
+
+          用于测试 Srlily-Updater 更新功能的示例桌面应用。
+
+          - 版本：$version
+          - 运行时：.NET 10 (win-x64, self-contained)
+          - 构建：https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          "@
+          }
+          $body | Set-Content release-notes.md -Encoding utf8
+          Write-Host "Release notes written ($($body.Length) chars)"
+
+      - name: Package zip + checksum
+        if: steps.ver.outputs.publish == 'true'
+        shell: pwsh
+        run: |
+          $version = "${{ steps.ver.outputs.version }}"
+          $name = "Srlily.UpdaterTset-v$version-${{ env.RID }}"
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+
+          $zip = "artifacts/$name.zip"
+          if (Test-Path $zip) { Remove-Item $zip -Force }
+          Compress-Archive -Path "publish/${{ env.RID }}/*" -DestinationPath $zip
+
+          $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $name.zip" | Set-Content "artifacts/checksums.sha256" -Encoding ascii
+
+          Copy-Item update-manifest.json artifacts/
+          Write-Host "Packaged $zip"
+          Write-Host "SHA256 $hash"
+
+      - name: Create GitHub Release
+        if: steps.ver.outputs.publish == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: Srlily Updater Test ${{ steps.ver.outputs.tag }}
+          body_path: release-notes.md
+          draft: false
+          prerelease: ${{ contains(steps.ver.outputs.version, '-') }}
+          files: |
+            artifacts/Srlily.UpdaterTset-v${{ steps.ver.outputs.version }}-${{ env.RID }}.zip
+            artifacts/checksums.sha256
+            artifacts/update-manifest.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Skip notice
+        if: steps.ver.outputs.publish != 'true'
+        run: echo "No v* tag; release publish skipped."
