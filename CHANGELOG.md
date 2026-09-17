@@ -2,7 +2,17 @@
 
 本文件的版本章节会被 GitHub Release 工作流用作**软件介绍 / 发布说明**正文。
 
-格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
+格式参考 [Keep a Changelog](https://keepachangelog.com/1.1.0/)。
+
+## [1.0.2] - 2026-02-14
+
+### 软件介绍
+
+Srlily Updater Test v1.0.2 修复 CI 上 Inno Setup 缺少中文语言包导致 setup.exe 编译失败的问题。现已将 `ChineseSimplified.isl` 随仓库分发，三架构安装包可稳定构建。
+
+### 修复
+
+- 自带 `installer/Languages/ChineseSimplified.isl`，不再依赖 runner 上的 Inno 语言包
 
 ## [1.0.1] - 2026-02-14
 
