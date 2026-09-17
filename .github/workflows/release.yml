@@ -128,7 +128,7 @@ jobs:
             "/DAppArch=$rid" `
             "/DPublishDir=..\publish\$rid" `
             "/O$((Resolve-Path artifacts).Path)" `
-            "/F=Srlily.UpdaterTset-v$version-$rid-setup"
+            "/FSrlily.UpdaterTset-v$version-$rid-setup"
           if ($LASTEXITCODE -ne 0) { throw "iscc failed" }
           Write-Host "setup.exe created"
 
@@ -265,32 +265,77 @@ jobs:
         run: |
           $version = "${{ steps.ver.outputs.version }}"
           $tag = "${{ steps.ver.outputs.tag }}"
+          $repo = "${{ github.repository }}"
+          $runId = "${{ github.run_id }}"
           $changelog = Get-Content CHANGELOG.md -Raw -Encoding utf8
           $pattern = "(?s)^## \[$([regex]::Escape($version))\][^\r\n]*\r?\n(.*?)(?=\r?\n## \[|\z)"
           $m = [regex]::Match($changelog, $pattern)
           if ($m.Success) {
-            $body = $m.Groups[1].Value.Trim()
+            $section = $m.Groups[1].Value.Trim()
           } else {
-            $body = @"
-          ## Srlily Updater Test $tag
+            $section = @"
+### 软件介绍
 
-          用于测试 Srlily-Updater 更新功能的示例桌面应用。
+Srlily Updater Test 是用于测试 [Srlily-Updater](https://github.com/Srlily/Srlily-Updater) 更新链路的示例桌面应用。
 
-          - 版本：$version
-          - 运行时：.NET 10 self-contained
-          - 架构：win-x64 / win-arm64 / win-x86
-          - 产物：setup.exe（Inno Setup）、.msi（WiX）、portable.zip
-          - 构建：https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          "@
+### 说明
+
+- 版本：$version
+- 运行时：.NET 10 self-contained
+- 架构：win-x64 / win-arm64 / win-x86
+"@
           }
 
-          $assets = Get-ChildItem release-assets -File | Sort-Object Name | ForEach-Object {
-            $size = [math]::Round($_.Length / 1MB, 2)
-            "- ``$($_.Name)`` ($size MB)"
+          # Always ensure required section headers exist in the body
+          foreach ($h in @('### 软件介绍', '### 新增', '### 修复', '### 优化')) {
+            if ($section -notmatch [regex]::Escape($h)) {
+              $section = $section + "`n`n$h`n`n- （本版本无相关条目）"
+            }
           }
-          $body = $body + "`n`n## 下载说明`n`n" + ($assets -join "`n")
+
+          # Build asset table grouped by type
+          $files = Get-ChildItem release-assets -File | Sort-Object Name
+          $rows = @()
+          foreach ($f in $files) {
+            $size = [math]::Round($f.Length / 1MB, 2)
+            $kind = switch -Regex ($f.Name) {
+              '-setup\.exe$' { '安装向导 (Inno Setup)' }
+              '\.msi$'       { 'MSI 安装包 (WiX 5)' }
+              '-portable\.zip$' { '便携包（更新器就地更新）' }
+              'checksums'    { '校验和清单' }
+              'update-manifest' { '更新清单' }
+              default        { '其他' }
+            }
+            $rows += "| ``$($f.Name)`` | $kind | $size MB |"
+          }
+
+          $download = @"
+
+## 下载说明
+
+| 文件 | 类型 | 大小 |
+|------|------|------|
+$($rows -join "`n")
+
+### 如何选择
+
+- **首次安装**：下载对应架构的 ``*-setup.exe`` 或 ``*.msi``
+- **更新器就地更新 / 自动化测试**：使用对应架构的 ``*-portable.zip``
+- **完整性校验**：对照 ``checksums.sha256`` 中的 SHA256
+
+### 版本信息
+
+- 版本标签：``$tag``
+- 运行时：.NET 10 self-contained
+- 支持架构：win-x64 / win-arm64 / win-x86
+- 构建记录：https://github.com/$repo/actions/runs/$runId
+- 项目仓库：https://github.com/$repo
+"@
+
+          $body = $section + "`n" + $download
           $body | Set-Content release-notes.md -Encoding utf8
-          Write-Host "Release notes ready"
+          Write-Host "Release notes ready ($($body.Length) chars)"
+          Get-Content release-notes.md | Select-Object -First 40
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

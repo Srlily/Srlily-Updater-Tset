@@ -1,6 +1,6 @@
 ; Inno Setup 6 script — Srlily Updater Test
 ; Build:
-;   iscc installer\Setup.iss /DAppVersion=1.0.1 /DAppArch=win-x64 /DPublishDir=..\publish\win-x64 /O..\artifacts /F=Srlily.UpdaterTset-v1.0.1-win-x64-setup
+;   iscc installer\Setup.iss /DAppVersion=1.0.2 /DAppArch=win-x64 /DPublishDir=..\publish\win-x64 /O..\artifacts /FSrlily.UpdaterTset-v1.0.2-win-x64-setup
 
 #ifndef AppVersion
   #define AppVersion "0.0.0"

@@ -100,7 +100,7 @@ foreach ($rid in $Runtimes) {
                 "/DAppArch=$rid" `
                 "/DPublishDir=..\publish\$rid" `
                 "/O..$([IO.Path]::DirectorySeparatorChar)artifacts" `
-                "/F=$base-setup"
+                "/F$base-setup"
             if ($LASTEXITCODE -ne 0) { throw "iscc failed for $rid" }
             $sh = (Get-FileHash $setupOut -Algorithm SHA256).Hash.ToLowerInvariant()
             $allHashes += "$sh  $base-setup.exe"
