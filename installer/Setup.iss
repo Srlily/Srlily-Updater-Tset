@@ -79,9 +79,14 @@ AllowNoIcons=yes
 LicenseFile=..\LICENSE
 ChangesAssociations=no
 
-[Languages]
+[[Languages]
+; Chinese first so it is pre-selected on zh-CN systems; file must be UTF-8 with BOM.
 Name: "chinesesimplified"; MessagesFile: "Languages\ChineseSimplified.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
+
+[CustomMessages]
+chinesesimplified.OpenInstallFolder=打开安装目录
+english.OpenInstallFolder=Open install folder
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
@@ -91,12 +96,11 @@ Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
 
 [Icons]
 Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"
-Name: "{group}\Install folder"; Filename: "{app}"
+Name: "{group}\{cm:OpenInstallFolder}"; Filename: "{app}"
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\{#AppExeName}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent
 
 [UninstallDelete]
-; updater staging/backup leftovers
 Type: filesandordirs; Name: "{app}\.srlily-updater"
