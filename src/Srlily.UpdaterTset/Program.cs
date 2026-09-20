@@ -78,6 +78,25 @@ internal static class Cli
                 Console.WriteLine(JsonSerializer.Serialize(ConfigService.Load(app.BaseDirectory), JsonOpts));
                 return 0;
 
+            case "check-update":
+            case "check":
+                return RunUpdaterCli(app, UpdaterMode.Check, args);
+
+            case "apply-update":
+            case "apply":
+                return RunUpdaterCli(app, UpdaterMode.Apply, args);
+
+            case "update-ui":
+            case "updater-ui":
+                return RunUpdaterCli(app, UpdaterMode.Ui, args);
+
+            case "updater-path":
+                {
+                    var path = UpdaterService.FindUpdaterExecutable(app.BaseDirectory);
+                    Console.WriteLine(path ?? "");
+                    return path is null ? 1 : 0;
+                }
+
             case "help":
             case "?":
                 PrintHelp();
@@ -88,6 +107,28 @@ internal static class Cli
                 PrintHelp();
                 return 2;
         }
+    }
+
+    private static int RunUpdaterCli(AppInfo app, UpdaterMode mode, string[] args)
+    {
+        var root = app.BaseDirectory.TrimEnd(
+            Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        string? explicitPath = null;
+        for (var i = 1; i < args.Length - 1; i++)
+        {
+            if (args[i].Equals("--updater", StringComparison.OrdinalIgnoreCase))
+            {
+                explicitPath = args[i + 1];
+            }
+        }
+
+        var result = UpdaterService.Launch(root, mode, explicitPath);
+        Console.WriteLine(result.Message);
+        if (result.CommandLine is not null)
+        {
+            Console.WriteLine("CMD: " + result.CommandLine);
+        }
+        return result.Success ? 0 : 1;
     }
 
     private static void PrintHelp()
@@ -105,8 +146,13 @@ internal static class Cli
               --files                List packaged content files
               --locale [culture]     Print locale strings (default zh-CN)
               --config               Print appsettings.json as JSON
+              --check-update         Launch Srlily-Updater --check
+              --apply-update         Launch Srlily-Updater --apply
+              --update-ui            Launch Srlily-Updater UI
+              --updater-path         Print resolved Updater.exe path
               --help                 Show this help
 
+            Updater flags: --check-update --updater <path\to\Updater.exe>
             Without arguments the GUI starts.
             """);
     }

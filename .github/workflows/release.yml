@@ -169,6 +169,11 @@ jobs:
           $rid = "${{ matrix.rid }}"
           $base = "Srlily.UpdaterTset-v$version-$rid"
 
+          # Ship updater host config inside portable package
+          if (Test-Path "src/Srlily.UpdaterTset/updater.config.json") {
+            Copy-Item "src/Srlily.UpdaterTset/updater.config.json" "publish/$rid/updater.config.json" -Force
+          }
+
           $zip = "artifacts/$base-portable.zip"
           if (Test-Path $zip) { Remove-Item $zip -Force }
           Compress-Archive -Path "publish/$rid/*" -DestinationPath $zip
@@ -253,6 +258,67 @@ jobs:
             $lines += "$h  latest.json"
           }
           $lines | Set-Content release-assets/SHA256SUMS.txt -Encoding ascii
+
+          # Generate channel.json remote feed for Srlily-Updater
+          $sums = @{}
+          foreach ($line in $lines) {
+            $p = $line -split "\s+", 2
+            if ($p.Length -eq 2) { $sums[$p[1].Trim()] = $p[0].ToLowerInvariant() }
+          }
+
+          $notes = ""
+          $notesPath = "release-notes.md"
+          if (Test-Path $notesPath) {
+            # notes body from changelog will be filled later; keep placeholder if missing
+          }
+
+          function Get-RidFromName([string]$n) {
+            if ($n -match "win-arm64") { return "win-arm64" }
+            if ($n -match "win-x86") { return "win-x86" }
+            return "win-x64"
+          }
+
+          $assets = @{}
+          foreach ($f in Get-ChildItem release-assets -Filter "*-portable.zip" -File) {
+            $rid = Get-RidFromName $f.Name
+            $sha = $sums[$f.Name]
+            $assets[$rid] = [ordered]@{
+              url       = "https://github.com/${{ github.repository }}/releases/download/${{ steps.ver.outputs.tag }}/$($f.Name)"
+              fileName  = $f.Name
+              kind      = "portable"
+              size      = $f.Length
+              sha256    = $sha
+              signature = $null
+            }
+          }
+
+          $changelogNotes = ""
+          if (Test-Path CHANGELOG.md) {
+            $raw = Get-Content CHANGELOG.md -Raw -Encoding utf8
+            $ver = "${{ steps.ver.outputs.version }}"
+            $pattern = "(?ms)^## \[" + [regex]::Escape($ver) + "\][^\r\n]*\r?\n(.*?)(?=\r?\n## \[|\z)"
+            $m = [regex]::Match($raw, $pattern)
+            if ($m.Success) { $changelogNotes = $m.Groups[1].Value.Trim() }
+          }
+
+          $feed = [ordered]@{
+            schemaVersion = 1
+            appId         = "srlily-updater-tset"
+            name          = "Srlily Updater Test"
+            channel       = "stable"
+            version       = "${{ steps.ver.outputs.version }}"
+            pubDate       = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+            notes         = $changelogNotes
+            notesUrl      = "https://github.com/${{ github.repository }}/releases/tag/${{ steps.ver.outputs.tag }}"
+            homepage      = "https://github.com/${{ github.repository }}"
+            minOs         = "windows-10"
+            runtime       = "net10.0-windows"
+            assets        = $assets
+          }
+          $feed | ConvertTo-Json -Depth 8 | Set-Content release-assets/channel.json -Encoding utf8
+
+          # also expose as latest.json alias name used by some clients
+          Copy-Item release-assets/channel.json release-assets/latest.channel.json -Force
 
           Write-Host "Release assets:"
           Get-ChildItem release-assets | Format-Table Name, Length
@@ -389,7 +455,9 @@ jobs:
               '\.msi$'          { 'MSI 安装包（WiX 5）' }
               '-portable\.zip$' { '便携包（更新器就地更新）' }
               'SHA256SUMS'      { '校验和清单' }
-              'latest\.json'    { '更新清单（供更新器读取）' }
+              'channel\.json'   { '更新器远程 Feed（channel.json）' }
+              'latest\.channel' { '更新器远程 Feed 备份' }
+              'latest\.json'    { '安装包身份清单（latest.json）' }
               default           { '其他' }
             }
             $lines.Add(('| `{0}` | {1} | {2} |' -f $f.Name, $kind, (Format-Size $f.Length)))

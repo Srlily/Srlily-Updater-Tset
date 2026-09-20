@@ -1,0 +1,46 @@
+{
+  "version": "1.0.0",
+  "generatedFor": "update-testing",
+  "samples": [
+    {
+      "id": "sample-001",
+      "name": "基础更新包",
+      "kind": "full",
+      "sizeMb": 18.1,
+      "files": 124,
+      "description": "包含主程序与全部资源的完整包"
+    },
+    {
+      "id": "sample-002",
+      "name": "增量补丁",
+      "kind": "delta",
+      "sizeMb": 2.4,
+      "files": 12,
+      "description": "仅替换变更文件的增量包"
+    },
+    {
+      "id": "sample-003",
+      "name": "仅语言包",
+      "kind": "locale",
+      "sizeMb": 0.3,
+      "files": 4,
+      "description": "只更新 Locales 目录"
+    },
+    {
+      "id": "sample-004",
+      "name": "插件热更新",
+      "kind": "plugin",
+      "sizeMb": 1.1,
+      "files": 3,
+      "description": "只更新 Plugins 目录"
+    },
+    {
+      "id": "sample-005",
+      "name": "配置迁移",
+      "kind": "config",
+      "sizeMb": 0.05,
+      "files": 2,
+      "description": "只更新 Config 目录"
+    }
+  ]
+}

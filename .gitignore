@@ -1,53 +1,6 @@
-# .NET
-bin/
-obj/
-[Bb]uild/
-[Ll]og/
-[Ll]ogs/
-*.user
-*.suo
-*.userosscache
-*.sln.docstates
-*.userprefs
+## Srlily-Updater binary (build from Srlily-Updater repo; do not commit 70MB+ exe)
+tools/updater/
+updater/
 
-# IDE
-.vs/
-.vscode/
-.idea/
-*.swp
-*~
-
-# NuGet
-*.nupkg
-*.snupkg
-**/[Pp]ackages/*
-!**/[Pp]ackages/build/
-project.lock.json
-project.fragment.lock.json
-artifacts/
-
-# Build results
-[Dd]ebug/
-[Rr]elease/
-x64/
-x86/
-[Ww][Ii][Nn]32/
-[Aa][Rr][Mm]/
-[Aa][Rr][Mm]64/
-publish/
-artifacts/
-*.pdb
-*.wixpdb
-*.cache
-*.log
-
-# OS
-Thumbs.db
-ehthumbs.db
-Desktop.ini
-.DS_Store
-
-# Test / local
-*.local.json
-secrets.json
-appsettings.*.local.json
+## Local install used for updater integration tests
+.local-install/

@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "appId": "srlily-updater-tset",
+  "appName": "Srlily Updater Test",
+  "channel": "stable",
+  "feed": {
+    "type": "github",
+    "repo": "Srlily/Srlily-Updater-Tset",
+    "channelAsset": "channel.json",
+    "fallback": {
+      "api": "https://api.github.com/repos/Srlily/Srlily-Updater-Tset/releases/latest",
+      "assetPattern": "Srlily.UpdaterTset-v{version}-{rid}-portable.zip",
+      "checksumFile": "SHA256SUMS.txt",
+      "defaultRid": "win-x64"
+    }
+  },
+  "entry": {
+    "executable": "Srlily.UpdaterTset.exe",
+    "args": [],
+    "versionArgs": ["--version"],
+    "workingDir": "."
+  },
+  "versionSource": {
+    "kind": "latestJson",
+    "path": "latest.json",
+    "jsonPath": "version"
+  },
+  "package": {
+    "kind": "portable",
+    "rid": "auto"
+  },
+  "policy": {
+    "checkOnStartup": false,
+    "promptBeforeInstall": true,
+    "verifyChecksum": true,
+    "verifySignature": false,
+    "atomicReplace": true,
+    "restartAfterUpdate": true,
+    "preferInstallerForFirstInstall": true,
+    "preferPortableForInPlaceUpdate": true,
+    "deleteOrphans": true,
+    "preserve": [
+      "Config/appsettings.Development.json",
+      "Logs/**",
+      "Data/user/**",
+      ".srlily-updater/**"
+    ]
+  },
+  "network": {
+    "timeoutSeconds": 30,
+    "retry": 3,
+    "userAgent": "Srlily-Updater/1.0 (+https://github.com/Srlily/Srlily-Updater)",
+    "mirrors": []
+  },
+  "security": {
+    "publicKey": null,
+    "allowHttp": false
+  }
+}

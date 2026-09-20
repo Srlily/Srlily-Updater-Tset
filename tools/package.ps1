@@ -80,6 +80,9 @@ foreach ($rid in $Runtimes) {
     $base = "Srlily.UpdaterTset-v$Version-$rid"
 
     # 1) portable zip — primary updater package
+    if (Test-Path "src/Srlily.UpdaterTset/updater.config.json") {
+        Copy-Item "src/Srlily.UpdaterTset/updater.config.json" (Join-Path $outDir "updater.config.json") -Force
+    }
     $zip = "artifacts/$base-portable.zip"
     if (Test-Path $zip) { Remove-Item $zip -Force }
     Compress-Archive -Path "$outDir/*" -DestinationPath $zip
@@ -147,6 +150,16 @@ foreach ($rid in $Runtimes) {
 
 Copy-Item latest.json artifacts/latest.json -Force
 $allHashes | Set-Content artifacts/SHA256SUMS.txt -Encoding ascii
+
+# Generate local channel.json feed from artifacts
+try {
+    $script = Join-Path $PSScriptRoot "new-channel-feed.ps1"
+    if (Test-Path $script) {
+        & $script -Version $Version -Artifacts artifacts -Output artifacts/channel.json
+    }
+} catch {
+    Write-Warning "channel.json generation failed: $_"
+}
 
 Write-Host "==> Done"
 Get-ChildItem artifacts | Format-Table Name, Length

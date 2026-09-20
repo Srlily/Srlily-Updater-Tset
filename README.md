@@ -106,17 +106,53 @@ GitHub Actions 会：
 
 ## 作为 Srlily-Updater 测试目标
 
+本仓库已接入 [Srlily-Updater](https://github.com/Srlily/Srlily-Updater)：
+
+| 文件 | 作用 |
+|------|------|
+| `src/Srlily.UpdaterTset/updater.config.json` | 宿主接入配置（github feed + preserve 等） |
+| `latest.json` | 安装包身份（版本 / 入口 / 资产命名） |
+| 主界面「检查更新」/「更新界面」 | 应用内调用 Updater.exe |
+| CLI `--check-update` / `--apply-update` / `--update-ui` | 脚本化触发 |
+| `tools/run-updater.ps1` | 一键调用更新器 |
+| `tools/new-channel-feed.ps1` | 生成 `channel.json` 远程 Feed |
+| Release 资产 `channel.json` | 更新器读取的远程元数据（CI 自动生成） |
+
+### 使用更新器
+
+```powershell
+# 1) 准备 Updater.exe（二选一）
+$env:SRLILY_UPDATER = "E:\Github\Srlily-Updater\dist\Updater.exe"
+# 或复制到安装目录: <root>\updater\Updater.exe
+
+# 2) 准备一份安装目录（含 updater.config.json + latest.json）
+#    可解压 portable.zip，或自行 publish 到测试目录
+
+# 3) 应用内 / CLI
+cd C:\Apps\SrlilyUpdaterTest
+.\Srlily.UpdaterTset.exe --check-update
+.\Srlily.UpdaterTset.exe --update-ui
+
+# 或外部脚本
+pwsh ./tools/run-updater.ps1 -InstallRoot C:\Apps\SrlilyUpdaterTest -Mode check
+pwsh ./tools/run-updater.ps1 -InstallRoot C:\Apps\SrlilyUpdaterTest -Mode silent
+pwsh ./tools/run-updater.ps1 -InstallRoot C:\Apps\SrlilyUpdaterTest -Mode ui
+```
+
+退出码：`0` 已最新/成功 · `10` 有更新 · `20` 已更新 · 其他为错误。
+
 更新器可读取：
 
 | 来源 | 用途 |
 |------|------|
-| `latest.json` | 应用 ID、版本、架构资产表、发布 API、路径约定 |
-| `Srlily.UpdaterTset.exe --version` | 校验本地当前版本 |
-| GitHub Releases API | 获取最新版本与资产下载地址 |
-| `SHA256SUMS.txt` | 校验包完整性 |
+| `updater.config.json` | feed 类型、入口、preserve、策略 |
+| `latest.json` | 本地版本、appId、fallback 资产模板 |
+| `channel.json`（Release） | 远端版本 + portable.zip URL + SHA256 + notes |
+| GitHub Releases API | 无 channel.json 时的回退源 |
+| `SHA256SUMS.txt` | 包完整性校验 |
 | `Config/` `Locales/` `Data/` `Plugins/` | 验证多类型文件替换是否完整 |
 
-详细协议见 [docs/update-protocol.md](docs/update-protocol.md)。
+详细协议见 [docs/update-protocol.md](docs/update-protocol.md) 与更新器仓库 `docs/update-design.md`。
 
 ## 许可证
 

@@ -25,9 +25,22 @@ cd C:\Apps\SrlilyUpdaterTest
 ## 场景 A：标准更新
 
 1. 确认本地版本 < 最新 Release
-2. 启动更新器，指向本应用的 `appId` / releases API
-3. 执行检查 → 下载 → 安装
-4. 验收：
+2. 启动更新器，指向本应用安装目录（目录内含 `updater.config.json` + `latest.json`）：
+
+```powershell
+# 检查
+Updater.exe --check --root C:\Apps\SrlilyUpdaterTest
+# 有更新时 exit=10
+
+# 更新（静默，适合脚本）
+Updater.exe --silent --root C:\Apps\SrlilyUpdaterTest
+# 成功 exit=20
+
+# 或打开 UI
+Updater.exe --root C:\Apps\SrlilyUpdaterTest
+```
+
+3. 验收：
 
 ```powershell
 .\Srlily.UpdaterTset.exe --version   # 应等于新版本

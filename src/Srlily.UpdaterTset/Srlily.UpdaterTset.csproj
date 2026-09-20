@@ -19,6 +19,7 @@
     <Content Include="Data\**\*" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Plugins\**\*" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Assets\**\*" CopyToOutputDirectory="PreserveNewest" Exclude="Assets\app.ico" />
+    <Content Include="updater.config.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,10 +1,26 @@
 # 更新协议说明
 
-本文描述 Srlily-Updater 与本测试应用之间的约定，便于实现与联调。
+本文描述 **Srlily-Updater** 与本测试应用之间的约定。
 
-## 1. 清单文件
+完整设计见更新器仓库：`Srlily-Updater/docs/update-design.md`。
 
-路径：安装根目录 `latest.json`
+## 0. 接入文件
+
+| 文件 | 位置 | 作用 |
+|------|------|------|
+| `updater.config.json` | 安装根目录（随 portable.zip 分发） | 告诉更新器：feed、入口、版本来源、preserve |
+| `latest.json` | 安装根目录 | 安装包身份（appId/version/entry/paths） |
+| `channel.json` | **Release 资产 / Feed** | 远程更新源：version + 各 RID 资产 url/size/sha256 + notes |
+
+更新器 CLI：
+
+```powershell
+Updater.exe --check --root <安装目录>   # exit 10 = 有更新，0 = 已最新
+Updater.exe --apply --root <安装目录>   # exit 20 = 已更新
+Updater.exe --silent --root <安装目录>  # 无 UI 静默更新
+```
+
+## 1. 清单文件 `latest.json`（安装身份）
 
 | 字段 | 说明 |
 |------|------|
@@ -25,22 +41,44 @@ JSON Schema：`src/Srlily.UpdaterTset/Data/schema/latest.schema.json`
 
 ## 2. 检查更新
 
+更新器优先级：
+
 ```
-GET {releases.api}
-→ 解析 tag_name（如 v1.0.1）与 assets
+CLI --feed  >  updater.config.json feed  >  latest.json.releases.api 推导
+```
+
+### 2a. 标准 HTTP Feed（推荐）
+
+```
+GET {feed.url}                    # 通常是 .../releases/latest/download/channel.json
+→ 解析 ChannelFeed.assets[rid]
 → 与本地 version 比较
-→ 若更新：下载 downloadPattern 匹配的 zip
+→ 下载 assets[rid].url（portable.zip）
+→ 校验 sha256
 ```
 
-## 3. 安装步骤（建议）
+`channel.json` 由 CI 生成并上传到 Release（`tools/new-channel-feed.ps1`）。
 
-1. **下载** 到 `paths.staging`
-2. **校验** `SHA256SUMS.txt` 中对应 zip 的 SHA256
-3. **解压** 到 staging 子目录
-4. **备份** 当前安装目录关键文件到 `paths.backup`
-5. **原子替换** 安装根目录内容（先写临时目录再切换）
-6. **校验** 新 `Srlily.UpdaterTset.exe --version` 输出
-7. **重启** 主进程（`updatePolicy.restartAfterUpdate`）
+### 2b. GitHub Provider（兼容现有资产）
+
+```
+GET https://github.com/{repo}/releases/latest/download/channel.json
+# 若不存在：
+GET https://api.github.com/repos/{repo}/releases/latest
+→ 用 assetPattern + RID 匹配 portable.zip
+→ 下载 SHA256SUMS.txt 校验
+```
+
+## 3. 安装步骤（实现于 Updater 引擎）
+
+1. **下载** 到 `paths.staging/download`
+2. **校验** Feed 内联 sha256，或 `SHA256SUMS.txt`
+3. **备份** preserve 规则 + 将被覆盖文件到 `paths.backup/{from}-{timestamp}`
+4. **解压** 到 `paths.staging/extract`（防 Zip Slip）
+5. **替换** 安装根目录（保留 preserve；可选删除孤儿文件）
+6. **写入** `.srlily-updater/state.json`
+7. **重启** 主进程（`policy.restartAfterUpdate`）
+8. 失败时 **回滚** backup
 
 ## 4. 版本探测
 

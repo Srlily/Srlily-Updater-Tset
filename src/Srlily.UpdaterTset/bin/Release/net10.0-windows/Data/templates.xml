@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Templates version="1.0.0" product="Srlily Updater Test">
+  <Template id="release-notes" format="markdown">
+    <Title>版本更新说明</Title>
+    <Body>
+## 新增
+- 示例条目 A
+- 示例条目 B
+
+## 修复
+- 修正更新校验逻辑
+
+## 其他
+- 依赖升级
+    </Body>
+    <Metadata>
+      <Author>Srlily</Author>
+      <Channel>stable</Channel>
+    </Metadata>
+  </Template>
+
+  <Template id="changelog-entry" format="text">
+    <Title>Changelog</Title>
+    <Body>## [{version}] - {date}</Body>
+    <Metadata>
+      <Author>Srlily</Author>
+    </Metadata>
+  </Template>
+
+  <Template id="checksum-file" format="plain">
+    <Title>SHA256 清单</Title>
+    <Body>{sha256}  {fileName}</Body>
+  </Template>
+</Templates>

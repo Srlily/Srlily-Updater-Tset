@@ -170,6 +170,21 @@ public sealed class MainForm : Form
             Padding = new Padding(0, 8, 0, 0)
         };
 
+        var btnUpdate = new Button
+        {
+            Text = "检查更新",
+            AutoSize = true,
+            Margin = new Padding(0, 0, 8, 0),
+            BackColor = Color.FromArgb(43, 111, 240),
+            ForeColor = Color.White,
+            FlatStyle = FlatStyle.Flat
+        };
+        btnUpdate.FlatAppearance.BorderSize = 0;
+        btnUpdate.Click += (_, _) => RunUpdater(UpdaterMode.Check);
+
+        var btnUpdateUi = new Button { Text = "更新界面", AutoSize = true, Margin = new Padding(0, 0, 8, 0) };
+        btnUpdateUi.Click += (_, _) => RunUpdater(UpdaterMode.Ui);
+
         var btnFiles = new Button { Text = "刷新文件清单 (F5)", AutoSize = true, Margin = new Padding(0, 0, 8, 0) };
         btnFiles.Click += (_, _) => { RefreshFileList(); LoadLocalePreview(); };
 
@@ -207,6 +222,8 @@ public sealed class MainForm : Form
             }
         };
 
+        actions.Controls.Add(btnUpdate);
+        actions.Controls.Add(btnUpdateUi);
         actions.Controls.Add(btnFiles);
         actions.Controls.Add(btnOpen);
         actions.Controls.Add(btnGithub);
@@ -306,6 +323,24 @@ public sealed class MainForm : Form
 
         page.Controls.Add(box);
         return page;
+    }
+
+    private void RunUpdater(UpdaterMode mode)
+    {
+        var root = _app.BaseDirectory.TrimEnd(
+            Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var result = UpdaterService.Launch(root, mode);
+        var title = result.Success ? "Srlily-Updater" : "更新器不可用";
+        var icon = result.Success ? MessageBoxIcon.Information : MessageBoxIcon.Warning;
+
+        if (_statusLabel is not null)
+        {
+            _statusLabel.Text = result.Success
+                ? $"更新器：{mode} 已调用"
+                : "更新器未就绪";
+        }
+
+        MessageBox.Show(this, result.Message, title, MessageBoxButtons.OK, icon);
     }
 
     private void RefreshFileList()

@@ -1,0 +1,23 @@
+{
+  "app.title": "Srlily Updater Test",
+  "app.description": "Sample app used to verify the full Srlily-Updater flow",
+  "nav.overview": "Overview",
+  "nav.files": "Files",
+  "nav.locale": "Locales",
+  "nav.config": "Config",
+  "status.ready": "Ready",
+  "status.running": "Running",
+  "update.channel.stable": "Stable channel",
+  "update.channel.beta": "Beta channel",
+  "update.check": "Check for updates",
+  "update.download": "Downloading",
+  "update.install": "Installing",
+  "update.done": "Update complete",
+  "update.failed": "Update failed",
+  "msg.dont_close": "Do not force-close during update",
+  "msg.restart_hint": "App will restart automatically",
+  "action.ok": "OK",
+  "action.cancel": "Cancel",
+  "action.retry": "Retry",
+  "action.open_folder": "Open install folder"
+}

@@ -1,0 +1,23 @@
+{
+  "app.title": "Srlily 更新测试",
+  "app.description": "用于验证 Srlily-Updater 完整更新流程的示例应用",
+  "nav.overview": "概览",
+  "nav.files": "文件清单",
+  "nav.locale": "本地化",
+  "nav.config": "配置",
+  "status.ready": "就绪",
+  "status.running": "运行中",
+  "update.channel.stable": "稳定通道",
+  "update.channel.beta": "测试通道",
+  "update.check": "检查更新",
+  "update.download": "下载中",
+  "update.install": "安装中",
+  "update.done": "更新完成",
+  "update.failed": "更新失败",
+  "msg.dont_close": "更新中请勿强制关闭",
+  "msg.restart_hint": "完成后应用将自动重启",
+  "action.ok": "确定",
+  "action.cancel": "取消",
+  "action.retry": "重试",
+  "action.open_folder": "打开安装目录"
+}

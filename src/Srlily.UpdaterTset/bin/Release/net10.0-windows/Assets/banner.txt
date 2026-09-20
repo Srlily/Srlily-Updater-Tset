@@ -1,0 +1,7 @@
+Srlily Updater Test
+===================
+
+这是一个用于测试 Srlily-Updater 更新功能的示例桌面应用。
+
+版本标识：请以程序集版本与 latest.json 为准。
+构建通道：stable

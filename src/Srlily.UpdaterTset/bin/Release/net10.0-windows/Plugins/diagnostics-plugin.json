@@ -1,0 +1,11 @@
+{
+  "id": "diagnostics-plugin",
+  "name": "诊断插件",
+  "version": "1.0.0",
+  "description": "收集安装目录文件哈希，用于更新前后对比",
+  "author": "Srlily",
+  "entry": "DiagnosticsPlugin.dll",
+  "capabilities": ["hash-inventory", "diff-report"],
+  "minHostVersion": "1.0.0",
+  "enabled": false
+}

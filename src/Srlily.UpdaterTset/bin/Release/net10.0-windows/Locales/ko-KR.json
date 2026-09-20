@@ -1,0 +1,23 @@
+{
+  "app.title": "Srlily 업데이트 테스트",
+  "app.description": "Srlily-Updater 업데이트 흐름 검증용 샘플 앱",
+  "nav.overview": "개요",
+  "nav.files": "파일",
+  "nav.locale": "로케일",
+  "nav.config": "설정",
+  "status.ready": "준비",
+  "status.running": "실행 중",
+  "update.channel.stable": "안정 채널",
+  "update.channel.beta": "베타 채널",
+  "update.check": "업데이트 확인",
+  "update.download": "다운로드 중",
+  "update.install": "설치 중",
+  "update.done": "업데이트 완료",
+  "update.failed": "업데이트 실패",
+  "msg.dont_close": "업데이트 중 강제 종료하지 마세요",
+  "msg.restart_hint": "완료 후 자동으로 다시 시작됩니다",
+  "action.ok": "확인",
+  "action.cancel": "취소",
+  "action.retry": "다시 시도",
+  "action.open_folder": "설치 폴더 열기"
+}
