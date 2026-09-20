@@ -2,7 +2,7 @@
 
 本文件的版本章节会被 GitHub Release 工作流用作发布说明正文。
 
-推荐结构（直接进入条目；没有内容的小节**整节省略**，不要写「（无）」）：
+推荐结构（直接进入条目；没有内容的小节**整节省略**，不要写「（无）」；条目只用一级列表，禁止嵌套分级）：
 
 - `### 新增` — 新功能 / 新产物
 - `### 修复` — 缺陷修复
@@ -10,13 +10,25 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/1.1.0/)。
 
+## [1.0.11] - 2026-02-14
+
+### 修复
+
+- 发布说明条目改为扁平一级列表，不再使用嵌套子项
+- 原因：分级缩进会导致更新内容无法正确显示
+
+### 优化
+
+- 历史 CHANGELOG 中的嵌套条目已拍平
+- 与 Srlily-Updater 展示格式对齐
+
 ## [1.0.10] - 2026-02-14
 
 ### 修复
 
 - 修复 GitHub Release 正文丢失 `### 新增` / `### 修复` / `### 优化` 标题的问题
-  - 原因：按空行拆块后，单独成块的标题被误判为空小节并丢弃
-  - 现状：改为按行解析，标题与其下条目始终成对输出
+- 原因：按空行拆块后，单独成块的标题被误判为空小节并丢弃
+- 现状：改为按行解析，标题与其下条目始终成对输出
 
 ### 优化
 
@@ -27,9 +39,9 @@
 
 ### 新增
 
-- 发布资产采用通用命名：
-  - 校验清单：`SHA256SUMS.txt`（原 `checksums.sha256`）
-  - 更新元数据：`latest.json`（原 `update-manifest.json`）
+- 发布资产采用通用命名
+- 校验清单：`SHA256SUMS.txt`（原 `checksums.sha256`）
+- 更新元数据：`latest.json`（原 `update-manifest.json`）
 
 ### 修复
 
@@ -45,8 +57,8 @@
 ### 修复
 
 - 修复 setup.exe 编译失败：`Unknown language name "chinesesimplified"`
-  - 原因：在 `[CustomMessages]` 使用内置语言 id 作前缀，与自定义 `MessagesFile` 冲突
-  - 原因：`[Languages]` 误写为 `[[Languages]`
+- 原因：在 `[CustomMessages]` 使用内置语言 id 作前缀，与自定义 `MessagesFile` 冲突
+- 原因：`[Languages]` 误写为 `[[Languages]`
 - 语言 Name 改为唯一的 `simplifiedchinese`，中文文案移入语言文件的 `[CustomMessages]`
 
 ### 优化
@@ -135,8 +147,8 @@
 ### 修复
 
 - 修复 Inno Setup 输出文件名多出前导 `=` 的问题
-  - 原因：ISCC 的 `/F` 写成了 `/F=文件名`
-  - 现状：改为 `/F文件名`，产物名为 `Srlily.UpdaterTset-v{ver}-{rid}-setup.exe`
+- 原因：ISCC 的 `/F` 写成了 `/F=文件名`
+- 现状：改为 `/F文件名`，产物名为 `Srlily.UpdaterTset-v{ver}-{rid}-setup.exe`
 - 同步修正 CI（`release.yml`）与本地脚本（`tools/package.ps1`）
 
 ### 优化
