@@ -10,6 +10,21 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/1.1.0/)。
 
+## [1.0.16] - 2026-02-14
+
+### 修复
+
+- 安装语言列表仍显示两个 English
+- 原因：ChineseSimplified.isl 丢失 UTF-8 BOM，LanguageName 无法正确读取
+- 现状：LanguageName 使用 ASCII `Chinese (Simplified)`，并恢复 UTF-8 BOM
+- 更新界面连接 GitHub 后闪退
+- 原因：Srlily-Updater 在非 UI 线程修改 ObservableCollection
+- 现状：更新器已改为 Dispatcher 封送；请使用修复后的 Updater.exe
+
+### 优化
+
+- 语言列表可区分「Chinese (Simplified)」与「English」
+
 ## [1.0.15] - 2026-02-14
 
 ### 新增
