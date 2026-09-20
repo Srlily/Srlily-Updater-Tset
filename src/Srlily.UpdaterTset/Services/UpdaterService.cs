@@ -116,27 +116,35 @@ public static class UpdaterService
         }
 
         var args = BuildArgs(mode, installRoot);
-        var commandLine = $"\"{exe}\" {args}";
 
         try
         {
+            // Launch Updater.exe directly — never via cmd.exe.
+            // UI: shell-execute GUI process.
+            // Check/Apply/Silent: hidden window, no console flash.
             var psi = new ProcessStartInfo
             {
                 FileName = exe,
                 Arguments = args,
-                UseShellExecute = mode == UpdaterMode.Ui,
-                WorkingDirectory = installRoot
+                WorkingDirectory = installRoot,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WindowStyle = ProcessWindowStyle.Hidden,
+                RedirectStandardOutput = false,
+                RedirectStandardError = false
             };
 
             if (mode == UpdaterMode.Ui)
             {
+                psi.UseShellExecute = true;
+                psi.CreateNoWindow = false;
+                psi.WindowStyle = ProcessWindowStyle.Normal;
                 Process.Start(psi);
                 return new UpdaterLaunchResult
                 {
                     Success = true,
                     UpdaterPath = exe,
-                    CommandLine = commandLine,
-                    Message = $"已启动更新器界面：\n{commandLine}"
+                    Message = "已打开更新器界面。"
                 };
             }
 
@@ -147,7 +155,6 @@ public static class UpdaterService
                 {
                     Success = false,
                     UpdaterPath = exe,
-                    CommandLine = commandLine,
                     Message = "无法启动更新器进程。"
                 };
             }
@@ -155,15 +162,23 @@ public static class UpdaterService
             proc.WaitForExit(120_000);
             var code = proc.HasExited ? proc.ExitCode : -1;
             var ok = code == 0;
+
+            var summary = mode switch
+            {
+                UpdaterMode.Check when ok => "检查完成：当前已是最新或更新器已处理完毕。",
+                UpdaterMode.Check => $"检查未通过（代码 {code}）。",
+                UpdaterMode.Apply when ok => "更新已完成。",
+                UpdaterMode.Apply => $"更新未完成（代码 {code}）。",
+                UpdaterMode.Silent when ok => "静默更新完成。",
+                _ => ok ? "更新器执行完成。" : $"更新器返回代码 {code}。"
+            };
+
             return new UpdaterLaunchResult
             {
                 Success = ok,
                 UpdaterPath = exe,
                 ExitCode = code,
-                CommandLine = commandLine,
-                Message = ok
-                    ? $"更新器执行完成（exit {code}）。\n{commandLine}"
-                    : $"更新器返回非 0：exit {code}\n{commandLine}"
+                Message = summary
             };
         }
         catch (Exception ex)
@@ -172,7 +187,6 @@ public static class UpdaterService
             {
                 Success = false,
                 UpdaterPath = exe,
-                CommandLine = commandLine,
                 Message = $"启动更新器失败：{ex.Message}"
             };
         }

@@ -1,9 +1,9 @@
-﻿; *** Inno Setup 6 简体中文语言文件 ***
+; *** Inno Setup 6 简体中文语言文件 ***
 ; 必须以 UTF-8 with BOM 保存，否则 LanguageName 会乱码/回退为 English。
 ; 含完整 [Messages]，保证向导界面本身为中文，而不只是 [CustomMessages]。
 
 [LanguageSetup]
-LanguageName=简体中文
+LanguageName=简体中文 (Chinese Simplified)
 LanguageID=$0804
 LanguageCodePage=936
 DialogFontName=Microsoft YaHei UI

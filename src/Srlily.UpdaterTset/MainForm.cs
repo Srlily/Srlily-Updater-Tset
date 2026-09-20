@@ -330,17 +330,25 @@ public sealed class MainForm : Form
         var root = _app.BaseDirectory.TrimEnd(
             Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         var result = UpdaterService.Launch(root, mode);
-        var title = result.Success ? "Srlily-Updater" : "更新器不可用";
-        var icon = result.Success ? MessageBoxIcon.Information : MessageBoxIcon.Warning;
 
         if (_statusLabel is not null)
         {
             _statusLabel.Text = result.Success
-                ? $"更新器：{mode} 已调用"
+                ? result.Message
                 : "更新器未就绪";
         }
 
-        MessageBox.Show(this, result.Message, title, MessageBoxButtons.OK, icon);
+        // Only surface failures (missing updater/config). Success runs silently
+        // or opens the updater UI — never a cmd/console window.
+        if (!result.Success)
+        {
+            MessageBox.Show(
+                this,
+                result.Message,
+                "更新器不可用",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning);
+        }
     }
 
     private void RefreshFileList()

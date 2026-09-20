@@ -78,11 +78,17 @@ RestartApplications=no
 AllowNoIcons=yes
 LicenseFile=..\LICENSE
 ChangesAssociations=no
+LanguageDetectionMethod=uilanguage
+ShowLanguageDialog=yes
 
-[Languages]
-; Chinese first so it is pre-selected on zh-CN systems; file must be UTF-8 with BOM.
-; Use a unique Name (not the built-in id) when shipping a custom MessagesFile.
+Languages]
+; Prefer Inno official Chinese pack when present on the build machine.
+; Bundled file is a fallback (UTF-8 BOM + LanguageName=简体中文).
+#ifexist "compiler:Languages\ChineseSimplified.isl"
+Name: "chinesesimplified"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
+#else
 Name: "simplifiedchinese"; MessagesFile: "Languages\ChineseSimplified.isl"
+#endif
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [CustomMessages]

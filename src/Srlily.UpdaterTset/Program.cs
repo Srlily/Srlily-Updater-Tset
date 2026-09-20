@@ -124,10 +124,6 @@ internal static class Cli
 
         var result = UpdaterService.Launch(root, mode, explicitPath);
         Console.WriteLine(result.Message);
-        if (result.CommandLine is not null)
-        {
-            Console.WriteLine("CMD: " + result.CommandLine);
-        }
         return result.Success ? 0 : 1;
     }
 

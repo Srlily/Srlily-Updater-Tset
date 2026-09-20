@@ -102,7 +102,7 @@ jobs:
             "$env:ProgramFiles\Inno Setup 6\ISCC.exe"
           ) | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
           if (-not $iscc) {
-            Write-Host "Installing Inno Setup via winget/choco..."
+            Write-Host "Installing Inno Setup via choco..."
             choco install innosetup -y --no-progress
             $iscc = @(
               "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
@@ -110,8 +110,34 @@ jobs:
             ) | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
           }
           if (-not $iscc) { throw "ISCC.exe not found after install" }
-          Write-Host "ISCC=$iscc"
+
+          # Ensure official Chinese language pack exists next to ISCC
+          $isccDir = Split-Path $iscc -Parent
+          $official = Join-Path $isccDir "Languages\ChineseSimplified.isl"
+          if (-not (Test-Path $official)) {
+            Write-Host "Fetching official ChineseSimplified.isl..."
+            $url = "https://raw.githubusercontent.com/jrsoftware/issrc/main/Files/Languages/Unofficial/ChineseSimplified.isl"
+            try {
+              Invoke-WebRequest -Uri $url -OutFile $official -Headers @{ "User-Agent" = "Srlily-Updater-Tset-CI" }
+            } catch {
+              Write-Host "Official download failed, copy bundled file as official pack"
+              Copy-Item "installer\Languages\ChineseSimplified.isl" $official -Force
+            }
+          }
+          if (Test-Path $official) {
+            # force UTF-8 BOM
+            $utf8Bom = New-Object System.Text.UTF8Encoding $true
+            $text = [System.IO.File]::ReadAllText($official)
+            if ($text -notmatch 'LanguageName=') {
+              $text = [System.IO.File]::ReadAllText("installer\Languages\ChineseSimplified.isl")
+            }
+            [System.IO.File]::WriteAllText($official, $text.TrimStart([char]0xFEFF), $utf8Bom)
+            Write-Host "Chinese ISL: $official"
+            Select-String -Path $official -Pattern "LanguageName" | Select-Object -First 2
+          }
+
           "iscc=$iscc" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          Write-Host "ISCC=$iscc"
         id: iscc
 
       - name: Build setup.exe (Inno Setup)

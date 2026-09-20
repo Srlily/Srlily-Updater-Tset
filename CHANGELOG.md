@@ -10,6 +10,23 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/1.1.0/)。
 
+## [1.0.13] - 2026-02-14
+
+### 修复
+
+- 安装向导语言列表出现两个 English
+- 原因：自定义 ChineseSimplified.isl 未被正确识别 LanguageName
+- 现状：优先使用 Inno 官方中文语言包；打包机缺失时 CI 会补齐；LanguageName 改为「简体中文 (Chinese Simplified)」
+- 检查更新 / 更新界面不再弹出 cmd 控制台窗口
+- 原因：更新器以控制台进程启动并展示命令行
+- 现状：直接启动 Updater.exe；界面模式用 GUI；检查模式隐藏窗口
+
+### 优化
+
+- 成功时仅状态栏提示，不再弹窗展示命令行
+- 失败时仍弹出友好说明（缺少 Updater.exe 或宿主配置）
+- 安装程序 LanguageDetectionMethod=uilanguage，中文系统优先简体中文
+
 ## [1.0.12] - 2026-02-14
 
 ### 新增
