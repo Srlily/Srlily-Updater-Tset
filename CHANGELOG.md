@@ -10,6 +10,19 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/1.1.0/)。
 
+## [1.0.14] - 2026-02-14
+
+### 修复
+
+- 修复 setup.exe CI 编译失败
+- 原因：Setup.iss 中 `[Languages]` 误写为 `Languages]`
+- 原因：`#ifexist compiler:...` 在部分 runner 上不可靠
+- 现状：固定使用仓库内 `Languages\ChineseSimplified.isl`
+
+### 优化
+
+- 版本信息写入 4 段（如 1.0.14.0）以符合 Windows VersionInfo
+
 ## [1.0.13] - 2026-02-14
 
 ### 修复

@@ -3,7 +3,7 @@
 ; 含完整 [Messages]，保证向导界面本身为中文，而不只是 [CustomMessages]。
 
 [LanguageSetup]
-LanguageName=简体中文 (Chinese Simplified)
+LanguageName=简体中文
 LanguageID=$0804
 LanguageCodePage=936
 DialogFontName=Microsoft YaHei UI

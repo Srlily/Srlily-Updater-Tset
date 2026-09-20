@@ -68,7 +68,7 @@ ArchitecturesInstallIn64BitMode={#ArchInstall64}
 UninstallDisplayIcon={app}\{#AppExeName}
 UninstallDisplayName={#AppName}
 SetupIconFile=..\src\Srlily.UpdaterTset\Assets\app.ico
-VersionInfoVersion={#AppVersion}
+VersionInfoVersion={#AppVersion}.0
 VersionInfoCompany={#AppPublisher}
 VersionInfoDescription={#AppName} Setup ({#AppArch})
 VersionInfoProductName={#AppName}
@@ -81,14 +81,10 @@ ChangesAssociations=no
 LanguageDetectionMethod=uilanguage
 ShowLanguageDialog=yes
 
-Languages]
-; Prefer Inno official Chinese pack when present on the build machine.
-; Bundled file is a fallback (UTF-8 BOM + LanguageName=简体中文).
-#ifexist "compiler:Languages\ChineseSimplified.isl"
-Name: "chinesesimplified"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
-#else
-Name: "simplifiedchinese"; MessagesFile: "Languages\ChineseSimplified.isl"
-#endif
+[Languages]
+; Always use the bundled Chinese pack (UTF-8 BOM). Do not use #ifexist/compiler:
+; paths — those are unreliable on CI runners.
+Name: "chinesesimplified"; MessagesFile: "Languages\ChineseSimplified.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [CustomMessages]
