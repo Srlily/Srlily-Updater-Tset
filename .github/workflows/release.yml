@@ -295,38 +295,82 @@ jobs:
           }
 
           if ($section) {
-            # Drop a leading prose intro (text before the first ### heading)
-            $secLines = $section -split "`r?`n"
+            # Parse CHANGELOG body line-by-line so ### headings stay with their bullets.
+            # A lone "### 新增" (heading separated by blank line from bullets) must not be dropped.
+            $placeholderRe = '^\s*-\s*(（无）|\(无\)|无|本版本无相关条目|见 CHANGELOG.*)\s*$'
+            $secBodyLines = $section -split "`r?`n"
             $start = 0
-            for ($i = 0; $i -lt $secLines.Count; $i++) {
-              if ($secLines[$i].TrimStart().StartsWith('###')) { $start = $i; break }
+            for ($i = 0; $i -lt $secBodyLines.Count; $i++) {
+              if ($secBodyLines[$i].TrimStart().StartsWith('###')) { $start = $i; break }
               $start = -1
             }
             if ($start -ge 0) {
-              $section = ($secLines[$start..($secLines.Count - 1)] -join "`n").Trim()
+              $secBodyLines = @($secBodyLines[$start..($secBodyLines.Count - 1)])
             }
 
-            # Drop empty sections (only 无 / placeholder bullets) — do not emit "（无）"
-            $placeholderRe = '^\s*-\s*(（无）|\(无\)|无|本版本无相关条目|见 CHANGELOG.*)\s*$'
-            $blocks = @()
-            foreach ($block in ($section -split "`r?`n`r?`n")) {
-              $t = $block.Trim()
-              if (-not $t) { continue }
-              $blockLines = $t -split "`r?`n"
-              $heading = $blockLines[0].Trim()
-              if ($heading.StartsWith('###')) {
-                $bodyLines = @($blockLines | Select-Object -Skip 1 | Where-Object { $_.Trim() })
-                $real = @($bodyLines | Where-Object { $_ -notmatch $placeholderRe })
-                if ($real.Count -eq 0) {
-                  Write-Host "Skip empty section: $heading"
-                  continue
+            $heading = $null
+            $buf = New-Object System.Collections.Generic.List[string]
+            $emit = New-Object System.Collections.Generic.List[string]
+
+            foreach ($raw in $secBodyLines) {
+              $isHeading = $raw.TrimStart().StartsWith('###')
+              if ($isHeading) {
+                if ($null -ne $heading) {
+                  $trimmedBuf = New-Object System.Collections.Generic.List[string]
+                  $started = $false
+                  foreach ($c in $buf) {
+                    if (-not $started) {
+                      if (-not $c.Trim()) { continue }
+                      $started = $true
+                    }
+                    $trimmedBuf.Add($c)
+                  }
+                  while ($trimmedBuf.Count -gt 0 -and -not $trimmedBuf[$trimmedBuf.Count-1].Trim()) {
+                    $trimmedBuf.RemoveAt($trimmedBuf.Count-1)
+                  }
+                  $real = @($trimmedBuf | Where-Object { $_.Trim() -notmatch $placeholderRe })
+                  if ($real.Count -gt 0) {
+                    $emit.Add($heading.Trim())
+                    $emit.Add('')
+                    foreach ($c in $trimmedBuf) { $emit.Add($c) }
+                    $emit.Add('')
+                  } else {
+                    Write-Host "Skip empty section: $($heading.Trim())"
+                  }
                 }
+                $heading = $raw
+                $buf = New-Object System.Collections.Generic.List[string]
+              } elseif ($null -ne $heading) {
+                $buf.Add($raw)
               }
-              $blocks += $t
             }
-            foreach ($t in $blocks) {
+            # flush last section
+            if ($null -ne $heading) {
+              $trimmedBuf = New-Object System.Collections.Generic.List[string]
+              $started = $false
+              foreach ($c in $buf) {
+                if (-not $started) {
+                  if (-not $c.Trim()) { continue }
+                  $started = $true
+                }
+                $trimmedBuf.Add($c)
+              }
+              while ($trimmedBuf.Count -gt 0 -and -not $trimmedBuf[$trimmedBuf.Count-1].Trim()) {
+                $trimmedBuf.RemoveAt($trimmedBuf.Count-1)
+              }
+              $real = @($trimmedBuf | Where-Object { $_.Trim() -notmatch $placeholderRe })
+              if ($real.Count -gt 0) {
+                $emit.Add($heading.Trim())
+                $emit.Add('')
+                foreach ($c in $trimmedBuf) { $emit.Add($c) }
+                $emit.Add('')
+              } else {
+                Write-Host "Skip empty section: $($heading.Trim())"
+              }
+            }
+
+            foreach ($t in $emit) {
               $lines.Add($t)
-              $lines.Add('')
             }
           } else {
             $lines.Add("Srlily Updater Test $tag — .NET 10 self-contained 示例应用，用于测试 Srlily-Updater 更新链路。")
