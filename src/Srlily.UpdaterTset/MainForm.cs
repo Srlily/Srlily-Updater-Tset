@@ -329,25 +329,59 @@ public sealed class MainForm : Form
     {
         var root = _app.BaseDirectory.TrimEnd(
             Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        var result = UpdaterService.Launch(root, mode);
 
         if (_statusLabel is not null)
         {
-            _statusLabel.Text = result.Success
-                ? result.Message
-                : "更新器未就绪";
+            _statusLabel.Text = mode == UpdaterMode.Ui
+                ? "正在启动更新器界面…"
+                : "正在检查更新…";
+        }
+        Application.DoEvents();
+
+        var result = UpdaterService.Launch(root, mode);
+
+        // Check/Apply: always show a dialog so the user sees the result.
+        if (mode != UpdaterMode.Ui)
+        {
+            var icon = result.Success ? MessageBoxIcon.Information : MessageBoxIcon.Warning;
+            if (result.UpdateAvailable)
+            {
+                icon = MessageBoxIcon.Question;
+                var open = MessageBox.Show(
+                    this,
+                    result.Message + "\n\n是否打开更新器界面？",
+                    "检查更新",
+                    MessageBoxButtons.YesNo,
+                    icon);
+                if (open == DialogResult.Yes)
+                {
+                    RunUpdater(UpdaterMode.Ui);
+                    return;
+                }
+            }
+            else
+            {
+                MessageBox.Show(this, result.Message, "检查更新", MessageBoxButtons.OK, icon);
+            }
+
+            if (_statusLabel is not null)
+            {
+                _statusLabel.Text = result.Success
+                    ? UpdaterService.DescribeExitCode(result.ExitCode ?? -1)
+                    : "更新检查失败";
+            }
+            return;
         }
 
-        // Only surface failures (missing updater/config). Success runs silently
-        // or opens the updater UI — never a cmd/console window.
+        // UI mode: status only unless launch failed.
+        if (_statusLabel is not null)
+        {
+            _statusLabel.Text = result.Success ? result.Message : "更新器未就绪";
+        }
+
         if (!result.Success)
         {
-            MessageBox.Show(
-                this,
-                result.Message,
-                "更新器不可用",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Warning);
+            MessageBox.Show(this, result.Message, "更新器不可用", MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
     }
 

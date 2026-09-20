@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text;
 using System.Text.Json;
 
 namespace Srlily.UpdaterTset.Services;
@@ -18,11 +19,23 @@ public sealed class UpdaterLaunchResult
     public string? UpdaterPath { get; init; }
     public int? ExitCode { get; init; }
     public string? CommandLine { get; init; }
+    public string? Output { get; init; }
+    public bool UpdateAvailable { get; init; }
 }
 
 public static class UpdaterService
 {
     public const string ConfigFileName = "updater.config.json";
+
+    // Srlily-Updater documented exit codes
+    private const int ExitUpToDate = 0;
+    private const int ExitBadConfig = 2;
+    private const int ExitNetwork = 3;
+    private const int ExitVerify = 4;
+    private const int ExitApply = 5;
+    private const int ExitCancelled = 6;
+    private const int ExitUpdateAvailable = 10;
+    private const int ExitUpdated = 20;
 
     public static string? FindUpdaterExecutable(string installRoot)
     {
@@ -62,29 +75,36 @@ public static class UpdaterService
         => File.Exists(Path.Combine(installRoot, ConfigFileName))
            || File.Exists(Path.Combine(installRoot, "latest.json"));
 
-    public static string? ReadConfiguredAppId(string installRoot)
+    public static string BuildArguments(UpdaterMode mode, string installRoot)
     {
-        var path = Path.Combine(installRoot, ConfigFileName);
-        if (!File.Exists(path))
-        {
-            return null;
-        }
+        // Updater.exe CLI (see Srlily-Updater --help):
+        //   --root <dir> --check | --apply | --silent
+        //   UI mode: only --root (no --check/--apply/--silent). There is NO --ui flag.
+        var root = $"--root \"{installRoot}\"";
+        var config = Path.Combine(installRoot, ConfigFileName);
+        var cfg = File.Exists(config) ? $" --config \"{config}\"" : "";
 
-        try
+        return mode switch
         {
-            using var doc = JsonDocument.Parse(File.ReadAllText(path));
-            if (doc.RootElement.TryGetProperty("appId", out var id))
-            {
-                return id.GetString();
-            }
-        }
-        catch
-        {
-            // ignore malformed host config
-        }
-
-        return null;
+            UpdaterMode.Check => $"--check {root}{cfg}",
+            UpdaterMode.Apply => $"--apply {root}{cfg}",
+            UpdaterMode.Silent => $"--silent {root}{cfg}",
+            _ => $"{root}{cfg}"
+        };
     }
+
+    public static string DescribeExitCode(int code) => code switch
+    {
+        ExitUpToDate => "当前已是最新版本",
+        ExitUpdateAvailable => "发现新版本",
+        ExitUpdated => "更新已完成",
+        ExitBadConfig => "更新配置无效",
+        ExitNetwork => "无法连接更新源（网络或 GitHub 错误）",
+        ExitVerify => "更新包校验失败",
+        ExitApply => "安装更新失败",
+        ExitCancelled => "操作已取消",
+        _ => $"更新器退出代码 {code}"
+    };
 
     public static UpdaterLaunchResult Launch(string installRoot, UpdaterMode mode, string? updaterPath = null)
     {
@@ -97,9 +117,11 @@ public static class UpdaterService
                 Success = false,
                 UpdaterPath = exe,
                 Message =
-                    "未找到 Srlily-Updater（Updater.exe）。\n" +
-                    "请先构建更新器，或设置环境变量 SRLILY_UPDATER 指向 Updater.exe，\n" +
-                    "也可将 Updater.exe 放到安装目录的 updater\\ 下。"
+                    "未找到 Srlily-Updater（Updater.exe）。\n\n" +
+                    "请任选其一：\n" +
+                    "1. 设置环境变量 SRLILY_UPDATER 指向 Updater.exe\n" +
+                    "2. 将 Updater.exe 复制到安装目录 updater\\ 下\n" +
+                    $"3. 使用本机路径 E:\\Github\\Srlily-Updater\\dist\\Updater.exe"
             };
         }
 
@@ -110,19 +132,42 @@ public static class UpdaterService
                 Success = false,
                 UpdaterPath = exe,
                 Message =
-                    $"安装目录缺少更新宿主配置：\n{ConfigFileName} 或 latest.json\n" +
+                    $"安装目录缺少更新配置：\n{ConfigFileName} 或 latest.json\n\n" +
                     $"目录：{installRoot}"
             };
         }
 
-        var args = BuildArgs(mode, installRoot);
+        var args = BuildArguments(mode, installRoot);
+        var commandLine = $"\"{exe}\" {args}";
+        AppendHostLog(installRoot, $"LAUNCH {mode}: {commandLine}");
 
         try
         {
-            // Launch Updater.exe directly — never via cmd.exe.
-            // UI: shell-execute GUI process.
-            // Check/Apply/Silent: hidden window, no console flash.
-            var psi = new ProcessStartInfo
+            if (mode == UpdaterMode.Ui)
+            {
+                // GUI updater — no cmd window. Args must NOT include --check/--apply/--silent.
+                var psi = new ProcessStartInfo
+                {
+                    FileName = exe,
+                    Arguments = args,
+                    WorkingDirectory = installRoot,
+                    UseShellExecute = true,
+                    CreateNoWindow = false,
+                    WindowStyle = ProcessWindowStyle.Normal
+                };
+                Process.Start(psi);
+                AppendHostLog(installRoot, "UI process started");
+                return new UpdaterLaunchResult
+                {
+                    Success = true,
+                    UpdaterPath = exe,
+                    CommandLine = commandLine,
+                    Message = "已打开更新器界面。"
+                };
+            }
+
+            // Headless check/apply: hidden, capture stdout/stderr for feedback.
+            var headless = new ProcessStartInfo
             {
                 FileName = exe,
                 Arguments = args,
@@ -130,77 +175,86 @@ public static class UpdaterService
                 UseShellExecute = false,
                 CreateNoWindow = true,
                 WindowStyle = ProcessWindowStyle.Hidden,
-                RedirectStandardOutput = false,
-                RedirectStandardError = false
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                StandardOutputEncoding = Encoding.UTF8,
+                StandardErrorEncoding = Encoding.UTF8
             };
 
-            if (mode == UpdaterMode.Ui)
-            {
-                psi.UseShellExecute = true;
-                psi.CreateNoWindow = false;
-                psi.WindowStyle = ProcessWindowStyle.Normal;
-                Process.Start(psi);
-                return new UpdaterLaunchResult
-                {
-                    Success = true,
-                    UpdaterPath = exe,
-                    Message = "已打开更新器界面。"
-                };
-            }
-
-            using var proc = Process.Start(psi);
+            using var proc = Process.Start(headless);
             if (proc is null)
             {
                 return new UpdaterLaunchResult
                 {
                     Success = false,
                     UpdaterPath = exe,
+                    CommandLine = commandLine,
                     Message = "无法启动更新器进程。"
                 };
             }
 
+            var stdout = proc.StandardOutput.ReadToEnd();
+            var stderr = proc.StandardError.ReadToEnd();
             proc.WaitForExit(120_000);
             var code = proc.HasExited ? proc.ExitCode : -1;
-            var ok = code == 0;
+            var output = (stdout + "\n" + stderr).Trim();
+            AppendHostLog(installRoot, $"EXIT {code}: {Truncate(output, 400)}");
 
-            var summary = mode switch
+            var desc = DescribeExitCode(code);
+            var updateAvailable = code == ExitUpdateAvailable;
+            var ok = code is ExitUpToDate or ExitUpdateAvailable or ExitUpdated;
+
+            var sb = new StringBuilder();
+            sb.AppendLine(desc);
+            sb.AppendLine();
+            sb.AppendLine($"退出代码：{code}");
+            if (!string.IsNullOrWhiteSpace(output))
             {
-                UpdaterMode.Check when ok => "检查完成：当前已是最新或更新器已处理完毕。",
-                UpdaterMode.Check => $"检查未通过（代码 {code}）。",
-                UpdaterMode.Apply when ok => "更新已完成。",
-                UpdaterMode.Apply => $"更新未完成（代码 {code}）。",
-                UpdaterMode.Silent when ok => "静默更新完成。",
-                _ => ok ? "更新器执行完成。" : $"更新器返回代码 {code}。"
-            };
+                sb.AppendLine();
+                sb.AppendLine(Truncate(output, 800));
+            }
+            sb.AppendLine();
+            sb.AppendLine($"更新器：{exe}");
 
             return new UpdaterLaunchResult
             {
                 Success = ok,
                 UpdaterPath = exe,
                 ExitCode = code,
-                Message = summary
+                CommandLine = commandLine,
+                Output = output,
+                UpdateAvailable = updateAvailable,
+                Message = sb.ToString().Trim()
             };
         }
         catch (Exception ex)
         {
+            AppendHostLog(installRoot, $"ERROR {ex.Message}");
             return new UpdaterLaunchResult
             {
                 Success = false,
                 UpdaterPath = exe,
+                CommandLine = commandLine,
                 Message = $"启动更新器失败：{ex.Message}"
             };
         }
     }
 
-    private static string BuildArgs(UpdaterMode mode, string installRoot)
+    public static void AppendHostLog(string installRoot, string line)
     {
-        var verb = mode switch
+        try
         {
-            UpdaterMode.Check => "--check",
-            UpdaterMode.Apply => "--apply",
-            UpdaterMode.Silent => "--silent",
-            _ => "--ui"
-        };
-        return $"{verb} --root \"{installRoot}\"";
+            var dir = Path.Combine(installRoot, ".srlily-updater");
+            Directory.CreateDirectory(dir);
+            var path = Path.Combine(dir, "host-launch.log");
+            File.AppendAllText(path, $"[{DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss}] {line}{Environment.NewLine}");
+        }
+        catch
+        {
+            // logging must never break launch
+        }
     }
+
+    private static string Truncate(string s, int max)
+        => s.Length <= max ? s : s[..max] + "…";
 }

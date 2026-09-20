@@ -124,7 +124,7 @@ internal static class Cli
 
         var result = UpdaterService.Launch(root, mode, explicitPath);
         Console.WriteLine(result.Message);
-        return result.Success ? 0 : 1;
+        return result.Success ? 0 : (result.ExitCode ?? 1);
     }
 
     private static void PrintHelp()
