@@ -72,7 +72,12 @@ public sealed class UpdateManifest
 
     public static UpdateManifest? TryLoad(string baseDirectory)
     {
-        var path = Path.Combine(baseDirectory, "update-manifest.json");
+        var path = Path.Combine(baseDirectory, "latest.json");
+        if (!File.Exists(path))
+        {
+            // backward-compatible fallback
+            path = Path.Combine(baseDirectory, "update-manifest.json");
+        }
         if (!File.Exists(path))
         {
             return null;
@@ -116,7 +121,7 @@ public sealed class EntryInfo
 public sealed class ChecksumInfo
 {
     public string Algorithm { get; init; } = "SHA256";
-    public string File { get; init; } = "checksums.sha256";
+    public string File { get; init; } = "SHA256SUMS.txt";
 }
 
 public sealed class PathInfo

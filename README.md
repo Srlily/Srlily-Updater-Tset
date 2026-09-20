@@ -10,7 +10,7 @@
 - 启动后展示版本、运行时、架构与更新通道信息
 - 内置 **文件清单 / 本地化 / 配置** 三个检查页，便于对比更新前后差异
 - CLI 模式支持 `--version`、`--info`、`--manifest`、`--files` 等命令，便于脚本化验收
-- 根目录 `update-manifest.json` 描述更新协议元数据（发布 API、包名模板、校验算法、路径约定）
+- 根目录 `latest.json` 描述更新元数据（发布 API、包名模板、校验算法、路径约定）
 - GitHub Actions 自动构建；推送 `v*` 标签即发布带软件说明的 GitHub Release
 
 ## 目录结构
@@ -26,9 +26,10 @@ Srlily-Updater-Tset/
 │   └── Assets/                 # 品牌与横幅资源
 ├── docs/                       # 架构与更新协议说明
 ├── tools/package.ps1           # 本地打包脚本
-├── update-manifest.json        # 更新器可读的清单
+├── latest.json                 # 更新器可读的清单
 ├── CHANGELOG.md                # 版本说明（Release 正文来源）
-└── Directory.Build.props       # 统一版本号
+├── Directory.Build.props       # 统一版本号
+├── SHA256SUMS.txt              # 构建后生成（发布资产）
 ```
 
 ## 环境要求
@@ -69,7 +70,7 @@ dotnet run --project src/Srlily.UpdaterTset -c Release
 | `win-arm64` | Windows ARM64 |
 | `win-x86` | Windows x86 |
 
-另有 `checksums.sha256` 与 `update-manifest.json`。
+另有 `SHA256SUMS.txt` 与 `latest.json`。
 
 > 更新器做增量/就地更新时请下载 **portable.zip**；setup.exe / MSI 面向首次安装。
 
@@ -83,12 +84,12 @@ pwsh ./tools/package.ps1 -Version 1.0.1
 pwsh ./tools/package.ps1 -Version 1.0.1 -Runtimes win-x64,win-arm64,win-x86 -IncludeInstallers
 ```
 
-产物位于 `artifacts/`，并生成 `checksums.sha256`。
+产物位于 `artifacts/`，并生成 `SHA256SUMS.txt`。
 
 ## 发布流程（自动构建）
 
 1. 更新 `Directory.Build.props` 中的 `Version`
-2. 更新 `update-manifest.json` 中的 `version`
+2. 更新 `latest.json` 中的 `version`
 3. 在 `CHANGELOG.md` 写入该版本说明（含「软件介绍」）
 4. 提交并打标签推送：
 
@@ -109,10 +110,10 @@ GitHub Actions 会：
 
 | 来源 | 用途 |
 |------|------|
-| `update-manifest.json` | 应用 ID、版本、架构资产表、发布 API、路径约定 |
+| `latest.json` | 应用 ID、版本、架构资产表、发布 API、路径约定 |
 | `Srlily.UpdaterTset.exe --version` | 校验本地当前版本 |
 | GitHub Releases API | 获取最新版本与资产下载地址 |
-| `checksums.sha256` | 校验包完整性 |
+| `SHA256SUMS.txt` | 校验包完整性 |
 | `Config/` `Locales/` `Data/` `Plugins/` | 验证多类型文件替换是否完整 |
 
 详细协议见 [docs/update-protocol.md](docs/update-protocol.md)。

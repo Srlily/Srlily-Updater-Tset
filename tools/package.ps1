@@ -135,17 +135,18 @@ foreach ($rid in $Runtimes) {
         }
     }
 
-    # per-arch manifest copy
-    $manifest = Get-Content update-manifest.json -Raw | ConvertFrom-Json
+    # per-arch latest.json copy
+    $manifest = Get-Content latest.json -Raw | ConvertFrom-Json
     $manifest.version = $Version
     $manifest.releases.downloadPattern = "Srlily.UpdaterTset-v{version}-$rid-portable.zip"
     $manifest.releases.assetName = "Srlily.UpdaterTset-v{version}-$rid-portable.zip"
     $manifest.releases.defaultRid = $rid
-    $manifest | ConvertTo-Json -Depth 20 | Set-Content "artifacts/update-manifest-$rid.json" -Encoding utf8
+    $manifest.checksum.file = "SHA256SUMS.txt"
+    $manifest | ConvertTo-Json -Depth 20 | Set-Content "artifacts/latest-$rid.json" -Encoding utf8
 }
 
-Copy-Item update-manifest.json artifacts/update-manifest.json -Force
-$allHashes | Set-Content artifacts/checksums.sha256 -Encoding ascii
+Copy-Item latest.json artifacts/latest.json -Force
+$allHashes | Set-Content artifacts/SHA256SUMS.txt -Encoding ascii
 
 Write-Host "==> Done"
 Get-ChildItem artifacts | Format-Table Name, Length

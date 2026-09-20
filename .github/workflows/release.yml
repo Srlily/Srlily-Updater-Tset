@@ -72,7 +72,7 @@ jobs:
             -replace '<InformationalVersion>.*?</InformationalVersion>', "<InformationalVersion>$version</InformationalVersion>" |
             Set-Content $props -NoNewline
 
-          $manifestPath = "update-manifest.json"
+          $manifestPath = "latest.json"
           $manifest = Get-Content $manifestPath -Raw | ConvertFrom-Json
           $manifest.version = $version
           $manifest.releases.downloadPattern = "Srlily.UpdaterTset-v{version}-${{ matrix.rid }}-portable.zip"
@@ -174,14 +174,14 @@ jobs:
           Compress-Archive -Path "publish/$rid/*" -DestinationPath $zip
 
           $lines = @()
-          foreach ($f in Get-ChildItem artifacts/* -File | Where-Object { $_.Name -match "($rid|update-manifest)" }) {
+          foreach ($f in Get-ChildItem artifacts/* -File | Where-Object { $_.Name -match "($rid|latest\.json)" }) {
             $h = (Get-FileHash $f.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
             $lines += "$h  $($f.Name)"
             Write-Host "SHA256 $($f.Name) = $h"
           }
-          $lines | Set-Content "artifacts/checksums-$rid.sha256" -Encoding ascii
+          $lines | Set-Content "artifacts/SHA256SUMS-$rid.txt" -Encoding ascii
 
-          Copy-Item update-manifest.json "artifacts/update-manifest-$rid.json"
+          Copy-Item latest.json "artifacts/latest-$rid.json"
 
       - name: Upload arch artifacts
         if: steps.ver.outputs.publish == 'true'
@@ -235,27 +235,24 @@ jobs:
             }
           }
 
-          # Prefer x64 manifest as the default update-manifest
-          $manifest = Join-Path collected "update-manifest-win-x64.json"
+          # Prefer x64 latest.json as the release metadata file
+          $manifest = Join-Path collected "latest-win-x64.json"
           if (-not (Test-Path $manifest)) {
-            $manifest = Get-ChildItem collected -Filter "update-manifest-*.json" | Select-Object -First 1 -ExpandProperty FullName
+            $manifest = Get-ChildItem collected -Filter "latest-*.json" | Select-Object -First 1 -ExpandProperty FullName
           }
-          if ($manifest) { Copy-Item $manifest release-assets/update-manifest.json }
+          if ($manifest) { Copy-Item $manifest release-assets/latest.json }
 
           # Merge checksums
           $lines = @()
-          foreach ($f in Get-ChildItem release-assets -File | Where-Object { $_.Name -ne "update-manifest.json" }) {
+          foreach ($f in Get-ChildItem release-assets -File | Where-Object { $_.Name -ne "latest.json" }) {
             $h = (Get-FileHash $f.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
             $lines += "$h  $($f.Name)"
           }
-          if (Test-Path (Join-Path collected "update-manifest.json")) {
-            # no-op
-          }
           if ($manifest) {
-            $h = (Get-FileHash (Join-Path release-assets "update-manifest.json") -Algorithm SHA256).Hash.ToLowerInvariant()
-            $lines += "$h  update-manifest.json"
+            $h = (Get-FileHash (Join-Path release-assets "latest.json") -Algorithm SHA256).Hash.ToLowerInvariant()
+            $lines += "$h  latest.json"
           }
-          $lines | Set-Content release-assets/checksums.sha256 -Encoding ascii
+          $lines | Set-Content release-assets/SHA256SUMS.txt -Encoding ascii
 
           Write-Host "Release assets:"
           Get-ChildItem release-assets | Format-Table Name, Length
@@ -347,8 +344,8 @@ jobs:
               '-setup\.exe$'    { '安装向导（Inno Setup）' }
               '\.msi$'          { 'MSI 安装包（WiX 5）' }
               '-portable\.zip$' { '便携包（更新器就地更新）' }
-              'checksums'       { '校验和清单' }
-              'update-manifest' { '更新清单（供更新器读取）' }
+              'SHA256SUMS'      { '校验和清单' }
+              'latest\.json'    { '更新清单（供更新器读取）' }
               default           { '其他' }
             }
             $lines.Add(('| `{0}` | {1} | {2} |' -f $f.Name, $kind, (Format-Size $f.Length)))
@@ -359,8 +356,8 @@ jobs:
           $lines.Add('')
           $lines.Add('- **首次安装**：下载对应架构的 `*-setup.exe` 或 `*.msi`')
           $lines.Add('- **更新器就地更新 / 自动化测试**：使用对应架构的 `*-portable.zip`')
-          $lines.Add('- **完整性校验**：对照 `checksums.sha256` 中的 SHA256')
-          $lines.Add('- **更新器元数据**：`update-manifest.json` 记录版本与架构资产名，便于更新器免解压读取')
+          $lines.Add('- **完整性校验**：对照 `SHA256SUMS.txt` 中的 SHA256')
+          $lines.Add('- **更新器元数据**：`latest.json` 记录版本与架构资产名，便于更新器免解压读取')
           $lines.Add('')
           $lines.Add('### 版本信息')
           $lines.Add('')

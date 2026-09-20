@@ -10,6 +10,23 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/1.1.0/)。
 
+## [1.0.9] - 2026-02-14
+
+### 新增
+
+- 发布资产采用通用命名：
+  - 校验清单：`SHA256SUMS.txt`（原 `checksums.sha256`）
+  - 更新元数据：`latest.json`（原 `update-manifest.json`）
+
+### 修复
+
+- 应用与 CI、文档、打包脚本中的旧文件名引用已同步更新
+
+### 优化
+
+- 命名对齐常见开源/GNU 发布惯例与更新器（Tauri 等）的 `latest.json` 习惯
+- 程序集 CLI `--manifest` 读取 `latest.json`，并兼容旧文件名
+
 ## [1.0.8] - 2026-02-14
 
 ### 修复

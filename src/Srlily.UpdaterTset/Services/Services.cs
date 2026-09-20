@@ -135,7 +135,7 @@ public static class FileInventory
             }
         }
 
-        foreach (var name in new[] { "Srlily.UpdaterTset.exe", "update-manifest.json", "README.md", "CHANGELOG.md" })
+        foreach (var name in new[] { "Srlily.UpdaterTset.exe", "latest.json", "README.md", "CHANGELOG.md" })
         {
             var path = Path.Combine(baseDirectory, name);
             if (File.Exists(path))

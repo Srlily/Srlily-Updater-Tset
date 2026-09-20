@@ -9,7 +9,7 @@
 ```
 C:\Apps\SrlilyUpdaterTest\
   Srlily.UpdaterTset.exe
-  update-manifest.json
+  latest.json
   Config\ ...
   Locales\ ...
 ```
@@ -46,10 +46,10 @@ cd C:\Apps\SrlilyUpdaterTest
 - `Data/samples.json`
 - `Data/templates.xml`
 - `Data/sample-dictionary.csv`
-- `Data/schema/update-manifest.schema.json`
+- `Data/schema/latest.schema.json`
 - `Plugins/sample-plugin.json`
 - `Assets/banner.txt`
-- `update-manifest.json`（version 已更新）
+- `latest.json`（version 已更新）
 
 ## 场景 C：CLI 自动化
 
@@ -63,7 +63,7 @@ if ($v.Trim() -ne "1.0.1") { throw "version mismatch: $v" }
 
 ## 场景 D：异常
 
-- 将 `checksums.sha256` 中哈希改错 → 应拒绝安装
+- 将 `SHA256SUMS.txt` 中哈希改错 → 应拒绝安装
 - 下载中途断网 → 应可重试且不破坏现有安装
 - 磁盘只读目录 → 应报错且可回滚
 
@@ -71,7 +71,7 @@ if ($v.Trim() -ne "1.0.1") { throw "version mismatch: $v" }
 
 ```powershell
 # 1. 改版本
-#    Directory.Build.props + update-manifest.json + CHANGELOG.md
+#    Directory.Build.props + latest.json + CHANGELOG.md
 # 2. 提交
 git add -A
 git commit -m "chore: bump to 1.0.1"

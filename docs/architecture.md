@@ -13,7 +13,7 @@
 ```
 Program.cs          入口：无参启动 GUI，有参走 CLI
 MainForm.cs         主界面：概览 / 文件清单 / 本地化 / 配置
-Models/AppInfo.cs   版本与 update-manifest 反序列化模型
+Models/AppInfo.cs   版本与 latest.json 反序列化模型
 Services/           Config、Locale、FileInventory 辅助
 Config/             appsettings 与更新规则
 Locales/            多语言 JSON
@@ -27,7 +27,7 @@ Assets/             品牌元数据与横幅文本
 | 字段 | 来源 |
 |------|------|
 | `Version` / `FileVersion` | `Directory.Build.props` → 程序集 |
-| 清单 `version` | `update-manifest.json` |
+| 清单 `version` | `latest.json` |
 | Release 标签 | Git tag `vX.Y.Z`（CI 同步回写上述两者） |
 
 应用内展示的版本以**程序集**为准；更新器检查远端版本时以 **Release 标签 / manifest** 为准。
@@ -45,7 +45,7 @@ Assets/             品牌元数据与横幅文本
 - JSON Schema（Data/schema）
 - Markdown（README / Plugins/README）
 - 纯文本（Assets/banner.txt）
-- 元数据 JSON（update-manifest.json）
+- 元数据 JSON（latest.json）
 
 替换后应用应仍能 `--version` 成功，且文件清单数量与内容符合新版本预期。
 

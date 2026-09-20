@@ -101,7 +101,7 @@ internal static class Cli
             Commands:
               --version              Print application version
               --info                 Print AppInfo as JSON
-              --manifest             Print update-manifest.json as JSON
+              --manifest             Print latest.json as JSON
               --files                List packaged content files
               --locale [culture]     Print locale strings (default zh-CN)
               --config               Print appsettings.json as JSON

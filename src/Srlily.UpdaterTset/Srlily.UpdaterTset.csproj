@@ -22,7 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="..\..\update-manifest.json" Link="update-manifest.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\latest.json" Link="latest.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\README.md" Link="README.md" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\CHANGELOG.md" Link="CHANGELOG.md" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

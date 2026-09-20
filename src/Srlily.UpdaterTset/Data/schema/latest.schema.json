@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/Srlily/Srlily-Updater-Tset/schemas/update-manifest.schema.json",
-  "title": "Srlily Update Manifest",
+  "$id": "https://github.com/Srlily/Srlily-Updater-Tset/schemas/latest.schema.json",
+  "title": "Srlily Update Manifest (latest.json)",
   "type": "object",
   "required": ["schemaVersion", "appId", "name", "version", "channel", "releases", "entry"],
   "properties": {
